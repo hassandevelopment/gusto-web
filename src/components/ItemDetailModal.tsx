@@ -102,7 +102,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
     >
       {item && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '92dvh' }}>
+        <>
           {/* Image */}
           <div className="relative w-full flex-shrink-0 bg-bg overflow-hidden" style={{ height: '38dvh' }}>
             {imgErrored ? (
@@ -202,7 +202,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
               {inCart ? 'Update order' : `Add to order · ${price}`}
             </Button>
           </div>
-        </div>
+        </>
       )}
     </dialog>
   )

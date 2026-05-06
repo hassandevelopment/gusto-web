@@ -72,7 +72,6 @@ export default function CartDrawer({ open, onClose }: Props) {
       className="bg-card slide-up"
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '88dvh' }}>
       {/* Handle */}
       <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
         <div className="w-10 h-1 rounded-full bg-[rgba(104,90,90,0.18)]" />
@@ -178,7 +177,6 @@ export default function CartDrawer({ open, onClose }: Props) {
           </Button>
         </div>
       )}
-      </div>
     </dialog>
   )
 }
