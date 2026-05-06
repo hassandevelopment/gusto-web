@@ -91,7 +91,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
         inset: 'auto 0 0 0',
         maxWidth: '100%',
         width: '100%',
-        maxHeight: '92dvh',
+        height: '88dvh',
         margin: 0,
         padding: 0,
         border: 'none',
@@ -104,7 +104,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
       {item && (
         <>
           {/* Image */}
-          <div className="relative w-full flex-shrink-0 bg-bg overflow-hidden" style={{ height: '38dvh' }}>
+          <div className="relative w-full flex-shrink-0 bg-bg overflow-hidden" style={{ height: '240px' }}>
             {imgErrored ? (
               <div className="absolute inset-0 skeleton" />
             ) : (
