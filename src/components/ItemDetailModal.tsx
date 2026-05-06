@@ -97,16 +97,14 @@ export default function ItemDetailModal({ item, onClose }: Props) {
         border: 'none',
         borderRadius: '20px 20px 0 0',
         overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
       }}
       className="bg-card slide-up"
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
     >
       {item && (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '92dvh' }}>
           {/* Image */}
-          <div className="relative w-full flex-shrink-0 bg-bg overflow-hidden" style={{ aspectRatio: '4/3', maxHeight: '45dvh' }}>
+          <div className="relative w-full flex-shrink-0 bg-bg overflow-hidden" style={{ height: '38dvh' }}>
             {imgErrored ? (
               <div className="absolute inset-0 skeleton" />
             ) : (
@@ -204,7 +202,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
               {inCart ? 'Update order' : `Add to order · ${price}`}
             </Button>
           </div>
-        </>
+        </div>
       )}
     </dialog>
   )
