@@ -32,7 +32,7 @@ export default function RestaurantInfo({
   const instagramHref = `https://www.instagram.com/${instagram.replace(/^@/, '')}/`
 
   return (
-    <section aria-label="Restaurant information" className="bg-bg-cream border-t border-[rgba(104,90,90,0.12)] mt-8">
+    <section aria-label="Restaurant information" className="bg-bg border-t border-[rgba(104,90,90,0.12)] mt-8">
       <div className="max-w-3xl mx-auto px-5 py-10">
 
         {/* Logo lockup */}
