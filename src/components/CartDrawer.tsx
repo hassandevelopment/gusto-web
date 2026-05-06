@@ -154,49 +154,72 @@ export default function CartDrawer({ open, onClose }: Props) {
             </div>
 
             {/* Items */}
-            <ul className="space-y-5 mb-6">
+            <ul className="space-y-5 mb-8">
               {cartEntries.map(({ item, entry }) => (
-                <li key={item.id} className="flex items-start gap-3">
+                <li key={item.id} className="flex items-start gap-4">
+                  {/* qty badge — explicit square so rounded-full is always a circle */}
                   <span
-                    className="w-7 h-7 rounded-full bg-ink text-white text-[11px] font-bold
-                               flex items-center justify-center flex-shrink-0 mt-0.5"
+                    className="rounded-full bg-ink text-white font-semibold
+                               flex items-center justify-center flex-none"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      minWidth: '28px',
+                      fontSize: '12px',
+                      fontFamily: 'var(--font-wordmark)',
+                      marginTop: '2px',
+                    }}
                   >
                     {entry.qty}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p
-                      className="text-ink leading-tight"
-                      style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic', fontSize: '1.1rem' }}
+                      className="text-ink leading-snug"
+                      style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic', fontSize: '1.05rem' }}
                     >
                       {item.name}
                     </p>
                     {entry.notes && (
-                      <p className="text-xs text-text-muted mt-0.5 italic">{entry.notes}</p>
+                      <p className="text-xs text-text-muted mt-0.5 italic leading-snug">{entry.notes}</p>
                     )}
                   </div>
-                  <p className="text-sm font-semibold text-ink tabular-nums flex-shrink-0 pt-0.5">
+                  <p
+                    className="flex-none tabular-nums text-ink"
+                    style={{ fontFamily: 'var(--font-wordmark)', fontWeight: 500, fontSize: '0.9rem', paddingTop: '3px' }}
+                  >
                     {item.price !== null ? `BHD ${(item.price * entry.qty).toFixed(2)}` : '—'}
                   </p>
                 </li>
               ))}
             </ul>
 
-            {/* Total row */}
-            <div className="border-t border-[rgba(104,90,90,0.14)] pt-4 flex items-center justify-between">
-              <span className="text-sm text-text-muted">
-                {totalQty} {totalQty === 1 ? 'item' : 'items'}
-              </span>
-              <span
+            {/* Total + instruction */}
+            <div className="border-t border-[rgba(104,90,90,0.18)] pt-5 text-center">
+              <p className="text-text-muted text-xs tracking-[0.12em] uppercase mb-2">
+                {totalQty} {totalQty === 1 ? 'item' : 'items'} · VAT incl.
+              </p>
+              <p
                 className="text-ink tabular-nums"
-                style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic', fontSize: '1.3rem' }}
+                style={{
+                  fontFamily: 'var(--font-italic)',
+                  fontStyle: 'italic',
+                  fontSize: 'clamp(1.8rem, 7vw, 2.2rem)',
+                  letterSpacing: '-0.01em',
+                }}
               >
                 BHD {totalPrice.toFixed(2)}
-              </span>
+              </p>
             </div>
 
-            <p className="text-center text-xs text-text-muted mt-6 tracking-wide">
-              Show this screen to your waiter
-            </p>
+            {/* Instruction band */}
+            <div className="mt-6 rounded-xl border border-[rgba(104,90,90,0.14)] px-4 py-3 text-center bg-bg">
+              <p
+                className="text-text-muted"
+                style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic', fontSize: '0.95rem' }}
+              >
+                Show this screen to your waiter
+              </p>
+            </div>
           </div>
 
           {/* Done button — flex-shrink-0 keeps it pinned at bottom */}
