@@ -234,7 +234,7 @@ export default function CartDrawer({ open, onClose }: Props) {
             className="flex-shrink-0 px-5 pt-3 bg-card border-t border-[rgba(104,90,90,0.10)]"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
           >
-            <Button variant="primary" size="lg" className="w-full" onClick={onClose}>
+            <Button variant="primary" size="lg" className="w-full max-w-[320px] mx-auto" onClick={onClose}>
               Done
             </Button>
           </div>
@@ -336,7 +336,7 @@ export default function CartDrawer({ open, onClose }: Props) {
                   BHD {totalPrice.toFixed(2)}
                 </span>
               </div>
-              <Button variant="primary" size="lg" className="w-full" onClick={() => setWaiterMode(true)}>
+              <Button variant="primary" size="lg" className="w-full max-w-[320px] mx-auto" onClick={() => setWaiterMode(true)}>
                 Show waiter
               </Button>
             </div>

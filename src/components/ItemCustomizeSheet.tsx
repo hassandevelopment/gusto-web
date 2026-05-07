@@ -166,7 +166,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
   function SheetFooter({ children }: { children: React.ReactNode }) {
     return (
       <div
-        className="flex-shrink-0 px-5 pt-3 border-t border-[rgba(104,90,90,0.10)] bg-card"
+        className="flex-shrink-0 px-5 pt-3 border-t border-[rgba(104,90,90,0.10)] bg-card flex flex-col items-center"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
       >
         {children}
@@ -278,10 +278,10 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="flex-none px-4 min-h-[38px]" onClick={handleAddAsIs}>
+                  <Button variant="ghost" size="md" className="flex-1" onClick={handleAddAsIs}>
                     Add as-is
                   </Button>
-                  <Button variant="primary" size="sm" className="flex-1 min-h-[38px]" onClick={() => setStep(hasCustomize ? 2 : 3)}>
+                  <Button variant="primary" size="md" className="flex-1" onClick={() => setStep(hasCustomize ? 2 : 3)}>
                     Customise →
                   </Button>
                 </div>
@@ -299,7 +299,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                 {/* Remove section */}
                 {ingredients.length > 0 && (
                   <div>
-                    <div className="px-5 pt-5 pb-2 flex items-center justify-between">
+                    <div className="px-6 pt-5 pb-2 flex items-center justify-between">
                       <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted">
                         Included — tap to remove
                       </p>
@@ -311,7 +311,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                           <li key={ing}>
                             <button
                               onClick={() => toggleRemove(ing)}
-                              className="w-full flex items-center justify-between px-5 text-left
+                              className="w-full flex items-center justify-between px-6 text-left
                                 transition-colors duration-100 cursor-pointer select-none
                                 hover:bg-[rgba(104,90,90,0.04)] active:bg-[rgba(104,90,90,0.08)]"
                               style={{ minHeight: '58px' }}
@@ -329,7 +329,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                                 )}
                               </span>
                             </button>
-                            <div className="h-px mx-5 bg-[rgba(104,90,90,0.07)]" />
+                            <div className="h-px mx-6 bg-[rgba(104,90,90,0.07)]" />
                           </li>
                         )
                       })}
@@ -340,7 +340,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                 {/* Add extras section */}
                 {addons.length > 0 && (
                   <div className={ingredients.length > 0 ? 'mt-4' : ''}>
-                    <div className="px-5 pt-4 pb-2">
+                    <div className="px-6 pt-4 pb-2">
                       <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted">
                         Add extras — tap to add
                       </p>
@@ -352,7 +352,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                           <li key={addon}>
                             <button
                               onClick={() => toggleAdd(addon)}
-                              className="w-full flex items-center justify-between px-5 text-left
+                              className="w-full flex items-center justify-between px-6 text-left
                                 transition-colors duration-100 cursor-pointer select-none
                                 hover:bg-[rgba(104,90,90,0.04)] active:bg-[rgba(104,90,90,0.08)]"
                               style={{ minHeight: '58px' }}
@@ -374,7 +374,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                                 )}
                               </span>
                             </button>
-                            <div className="h-px mx-5 bg-[rgba(104,90,90,0.07)]" />
+                            <div className="h-px mx-6 bg-[rgba(104,90,90,0.07)]" />
                           </li>
                         )
                       })}
@@ -384,7 +384,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
               </div>
 
               <SheetFooter>
-                <Button variant="primary" size="lg" className="w-full" onClick={() => setStep(3)}>
+                <Button variant="primary" size="lg" className="w-full max-w-[320px]" onClick={() => setStep(3)}>
                   Next →
                 </Button>
               </SheetFooter>
@@ -450,7 +450,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
               </div>
 
               <SheetFooter>
-                <Button variant="primary" size="lg" className="w-full" onClick={() => setStep(4)}>
+                <Button variant="primary" size="lg" className="w-full max-w-[320px]" onClick={() => setStep(4)}>
                   Next →
                 </Button>
               </SheetFooter>
@@ -485,7 +485,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
               </div>
 
               <SheetFooter>
-                <Button variant="primary" size="lg" className="w-full" onClick={handleFinalAdd}>
+                <Button variant="primary" size="lg" className="w-full max-w-[320px]" onClick={handleFinalAdd}>
                   {item.price !== null
                     ? `Add to order · BHD ${totalPrice.toFixed(2)}`
                     : 'Add to order'}
