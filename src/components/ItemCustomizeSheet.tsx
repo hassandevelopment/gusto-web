@@ -294,42 +294,42 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
             <>
               <SheetHeader title="Customise" onBack={() => setStep(1)} />
 
-              <div className="overflow-y-auto overscroll-contain flex-1 pb-28">
+              <div className="overflow-y-auto overscroll-contain flex-1 pb-24">
 
-                {/* Remove section — full-width rows with checkmark toggle */}
+                {/* Remove section */}
                 {ingredients.length > 0 && (
                   <div>
-                    <div className="px-5 pt-5 pb-1">
+                    <div className="px-5 pt-5 pb-2 flex items-center justify-between">
                       <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted">
-                        Included ingredients
+                        Included — tap to remove
                       </p>
-                      <p className="text-[11px] text-text-muted/60 mt-0.5">Tap to remove</p>
                     </div>
-                    <ul className="mt-1">
+                    <ul>
                       {ingredients.map((ing) => {
                         const included = !removed.has(ing)
                         return (
                           <li key={ing}>
                             <button
                               onClick={() => toggleRemove(ing)}
-                              className="w-full flex items-center justify-between px-5 py-3.5 text-left
+                              className="w-full flex items-center justify-between px-5 text-left
                                 transition-colors duration-100 cursor-pointer select-none
-                                hover:bg-[rgba(104,90,90,0.03)] active:bg-[rgba(104,90,90,0.06)]"
+                                hover:bg-[rgba(104,90,90,0.04)] active:bg-[rgba(104,90,90,0.08)]"
+                              style={{ minHeight: '58px' }}
                             >
-                              <span className={`text-sm transition-all duration-150 ${included ? 'text-ink' : 'text-text-muted/50 line-through'}`}>
+                              <span className={`text-base transition-all duration-150 ${included ? 'text-ink' : 'text-text-muted/40 line-through'}`}>
                                 {ing}
                               </span>
-                              <span className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
-                                included ? 'bg-ink' : 'border border-[rgba(104,90,90,0.25)]'
+                              <span className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                included ? 'bg-ink' : 'border-2 border-[rgba(104,90,90,0.2)]'
                               }`}>
                                 {included && (
-                                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M1 3.5l2 2L8 1" />
+                                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M1 4l2.5 2.5L9 1" />
                                   </svg>
                                 )}
                               </span>
                             </button>
-                            <div className="h-px mx-5 bg-[rgba(104,90,90,0.06)]" />
+                            <div className="h-px mx-5 bg-[rgba(104,90,90,0.07)]" />
                           </li>
                         )
                       })}
@@ -337,44 +337,44 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                   </div>
                 )}
 
-                {/* Add extras section — same clean row style */}
+                {/* Add extras section */}
                 {addons.length > 0 && (
-                  <div className={ingredients.length > 0 ? 'mt-5' : ''}>
-                    <div className="px-5 pt-4 pb-1">
+                  <div className={ingredients.length > 0 ? 'mt-4' : ''}>
+                    <div className="px-5 pt-4 pb-2">
                       <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted">
-                        Add extras
+                        Add extras — tap to add
                       </p>
-                      <p className="text-[11px] text-text-muted/60 mt-0.5">Tap to add</p>
                     </div>
-                    <ul className="mt-1">
+                    <ul>
                       {addons.map((addon) => {
                         const active = added.has(addon)
                         return (
                           <li key={addon}>
                             <button
                               onClick={() => toggleAdd(addon)}
-                              className="w-full flex items-center justify-between px-5 py-3.5 text-left
+                              className="w-full flex items-center justify-between px-5 text-left
                                 transition-colors duration-100 cursor-pointer select-none
-                                hover:bg-[rgba(104,90,90,0.03)] active:bg-[rgba(104,90,90,0.06)]"
+                                hover:bg-[rgba(104,90,90,0.04)] active:bg-[rgba(104,90,90,0.08)]"
+                              style={{ minHeight: '58px' }}
                             >
-                              <span className={`text-sm transition-colors duration-150 ${active ? 'text-ink font-medium' : 'text-text-muted'}`}>
+                              <span className={`text-base transition-colors duration-150 ${active ? 'text-ink font-medium' : 'text-text-muted'}`}>
                                 {addon}
                               </span>
-                              <span className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
-                                active ? 'bg-ink' : 'border border-[rgba(104,90,90,0.25)]'
+                              <span className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                active ? 'bg-ink' : 'border-2 border-[rgba(104,90,90,0.2)]'
                               }`}>
                                 {active ? (
-                                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M1 3.5l2 2L8 1" />
+                                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M1 4l2.5 2.5L9 1" />
                                   </svg>
                                 ) : (
-                                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-[rgba(104,90,90,0.4)]">
-                                    <path d="M4 1v6M1 4h6" />
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-[rgba(104,90,90,0.35)]">
+                                    <path d="M5 1v8M1 5h8" />
                                   </svg>
                                 )}
                               </span>
                             </button>
-                            <div className="h-px mx-5 bg-[rgba(104,90,90,0.06)]" />
+                            <div className="h-px mx-5 bg-[rgba(104,90,90,0.07)]" />
                           </li>
                         )
                       })}
@@ -396,44 +396,57 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
             <>
               <SheetHeader title="Spice level" onBack={() => setStep(hasCustomize ? 2 : 1)} />
 
-              <div className="overflow-y-auto overscroll-contain flex-1 px-5 pb-28">
-                <p className="text-text-muted text-sm mt-5 mb-8">How much heat would you like?</p>
+              <div className="overflow-y-auto overscroll-contain flex-1 pb-24">
+                <p className="text-text-muted text-sm px-5 mt-5 mb-4">How much heat would you like?</p>
 
-                {/* Clean 2×2 card grid — text only, no icons */}
-                <div className="grid grid-cols-2 gap-3">
+                {/* Single column — full-width rows, no wasted space */}
+                <ul>
                   {(
                     [
-                      { value: 0 as const, label: 'No spice',  sub: 'Plain, as it comes' },
-                      { value: 1 as const, label: 'Mild',      sub: 'A gentle warmth'     },
-                      { value: 2 as const, label: 'Medium',    sub: 'Noticeably spicy'     },
-                      { value: 3 as const, label: 'Hot',       sub: 'Bold & fiery'         },
+                      { value: 0 as const, label: 'No spice', sub: 'Plain, as it comes' },
+                      { value: 1 as const, label: 'Mild',     sub: 'A gentle warmth'    },
+                      { value: 2 as const, label: 'Medium',   sub: 'Noticeably spicy'   },
+                      { value: 3 as const, label: 'Hot',      sub: 'Bold & fiery'       },
                     ] as const
                   ).map((opt) => {
                     const active = spice === opt.value
                     return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSpice(opt.value)}
-                        className={`rounded-2xl p-4 text-left border-2 transition-all duration-200 cursor-pointer select-none
-                          active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/40 ${
-                          active
-                            ? 'bg-ink text-white border-ink shadow-card'
-                            : 'bg-bg text-ink border-[rgba(104,90,90,0.15)] hover:border-[rgba(104,90,90,0.4)] hover:bg-[#f7f4f1]'
-                        }`}
-                      >
-                        <p
-                          className="font-semibold text-sm leading-tight mb-1"
-                          style={{ fontFamily: 'var(--font-wordmark)' }}
+                      <li key={opt.value}>
+                        <button
+                          onClick={() => setSpice(opt.value)}
+                          className={`w-full flex items-center justify-between px-5 text-left
+                            transition-colors duration-150 cursor-pointer select-none
+                            active:bg-[rgba(104,90,90,0.06)]
+                            ${active
+                              ? 'bg-ink text-white hover:bg-ink/90'
+                              : 'hover:bg-[rgba(104,90,90,0.04)]'
+                            }`}
+                          style={{ minHeight: '64px' }}
                         >
-                          {opt.label}
-                        </p>
-                        <p className={`text-xs leading-snug ${active ? 'text-white/60' : 'text-text-muted'}`}>
-                          {opt.sub}
-                        </p>
-                      </button>
+                          <div>
+                            <p className={`text-base font-semibold leading-tight ${active ? 'text-white' : 'text-ink'}`}
+                               style={{ fontFamily: 'var(--font-wordmark)' }}>
+                              {opt.label}
+                            </p>
+                            <p className={`text-sm mt-0.5 ${active ? 'text-white/60' : 'text-text-muted'}`}>
+                              {opt.sub}
+                            </p>
+                          </div>
+                          <span className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                            active ? 'bg-white/20 border-2 border-white' : 'border-2 border-[rgba(104,90,90,0.2)]'
+                          }`}>
+                            {active && (
+                              <svg width="10" height="8" viewBox="0 0 10 8" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 4l2.5 2.5L9 1" />
+                              </svg>
+                            )}
+                          </span>
+                        </button>
+                        <div className={`h-px mx-5 ${active ? 'bg-transparent' : 'bg-[rgba(104,90,90,0.07)]'}`} />
+                      </li>
                     )
                   })}
-                </div>
+                </ul>
               </div>
 
               <SheetFooter>
@@ -458,11 +471,10 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="e.g. extra crispy, no onion, allergy to nuts…"
-                  rows={5}
+                  rows={4}
                   maxLength={200}
-                  autoFocus
                   className="w-full rounded-2xl border border-[rgba(104,90,90,0.18)] bg-bg px-4 py-3.5
-                             text-sm text-ink placeholder:text-text-muted/50 resize-none leading-relaxed
+                             text-base text-ink placeholder:text-text-muted/40 resize-none leading-relaxed
                              focus:outline-none focus:border-ink/50 focus:shadow-[0_0_0_3px_rgba(45,40,40,0.07)]
                              transition-[border-color,box-shadow] duration-150"
                   style={{ fontFamily: 'var(--font-sans)' }}
