@@ -79,7 +79,7 @@ export default function App() {
         <CategoryNav categories={sortedCategories} items={items} headerHidden={headerHidden} />
       )}
 
-      <main className="max-w-3xl mx-auto px-4 pt-6 pb-32" id="menu-main">
+      <main className="max-w-3xl mx-auto px-4 pt-10 pb-32" id="menu-main">
         {/* ── Search results ── */}
         {searchOpen ? (
           <>
