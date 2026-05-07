@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/hassanalnajjar/Desktop/DEV-Gusto/Website && git add -A && git diff --staged --quiet || git commit -m \"Auto-deploy: $(date '+%Y-%m-%d %H:%M')\" && git push"
+          }
+        ]
+      }
+    ]
+  }
+}
