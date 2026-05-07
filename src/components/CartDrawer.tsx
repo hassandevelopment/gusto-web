@@ -102,7 +102,7 @@ export default function CartDrawer({ open, onClose }: Props) {
         <>
           {/* Top bar */}
           <div
-            className="flex items-center justify-between px-5 bg-card flex-shrink-0"
+            className="flex items-center justify-between px-6 bg-card flex-shrink-0"
             style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px', borderBottom: '1px solid rgba(104,90,90,0.10)' }}
           >
             <button
@@ -123,7 +123,7 @@ export default function CartDrawer({ open, onClose }: Props) {
           </div>
 
           {/* Scrollable body — flex-1 works because dialog has explicit height: 100dvh */}
-          <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-7">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-8 py-7">
 
             {/* Brand */}
             <div className="text-center mb-6">
@@ -231,7 +231,7 @@ export default function CartDrawer({ open, onClose }: Props) {
 
           {/* Done button — flex-shrink-0 keeps it pinned at bottom */}
           <div
-            className="flex-shrink-0 px-5 pt-3 bg-card border-t border-[rgba(104,90,90,0.10)] flex flex-col items-center"
+            className="flex-shrink-0 px-6 pt-3 bg-card border-t border-[rgba(104,90,90,0.10)] flex flex-col items-center"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
           >
             <Button variant="primary" size="lg" className="w-full max-w-[320px]" onClick={onClose}>
@@ -278,12 +278,12 @@ export default function CartDrawer({ open, onClose }: Props) {
             style={{ maxHeight: 'calc(88dvh - 60px - 64px - 108px)' }}
           >
             {isEmpty ? (
-              <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+              <div className="flex flex-col items-center justify-center py-14 px-8 text-center">
                 <p className="font-semibold text-text-muted mb-1">Your order is empty</p>
                 <p className="text-sm text-text-muted/70">Tap any item to add it</p>
               </div>
             ) : (
-              <ul className="divide-y divide-[rgba(104,90,90,0.08)] px-4">
+              <ul className="divide-y divide-[rgba(104,90,90,0.08)] px-5">
                 {cartEntries.map(({ item, entry }) => (
                   <li key={item.id} className="py-4 flex gap-3">
                     <div className="w-14 h-14 rounded-[8px] overflow-hidden bg-bg flex-shrink-0">
@@ -322,7 +322,7 @@ export default function CartDrawer({ open, onClose }: Props) {
           {/* Footer */}
           {!isEmpty && (
             <div
-              className="px-5 pt-4 border-t border-[rgba(104,90,90,0.12)] bg-card flex-shrink-0 flex flex-col items-center"
+              className="px-6 pt-4 border-t border-[rgba(104,90,90,0.12)] bg-card flex-shrink-0 flex flex-col items-center"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
             >
               <div className="w-full flex items-center justify-between mb-3">

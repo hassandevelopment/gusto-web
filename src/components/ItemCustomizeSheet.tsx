@@ -138,7 +138,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
   /* ── Shared header bar ── */
   function SheetHeader({ title, onBack }: { title: string; onBack: () => void }) {
     return (
-      <div className="flex items-center justify-between px-5 py-3 border-b border-[rgba(104,90,90,0.10)] flex-shrink-0">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-[rgba(104,90,90,0.10)] flex-shrink-0">
         <button
           onClick={onBack}
           className="flex items-center gap-1 text-text-muted hover:text-ink transition-colors cursor-pointer select-none"
@@ -166,7 +166,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
   function SheetFooter({ children }: { children: React.ReactNode }) {
     return (
       <div
-        className="flex-shrink-0 px-5 pt-3 border-t border-[rgba(104,90,90,0.10)] bg-card flex flex-col items-center"
+        className="flex-shrink-0 px-6 pt-3 border-t border-[rgba(104,90,90,0.10)] bg-card flex flex-col items-center"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
       >
         {children}
@@ -206,7 +206,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
           {/* ══ STEP 1 — Item details ══ */}
           {step === 1 && (
             <>
-              <div className="absolute top-4 right-4 z-10">
+              <div className="absolute top-4 right-5 z-10">
                 <button
                   ref={closeRef}
                   onClick={onClose}
@@ -222,7 +222,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                 <ItemPhoto src={item.image} alt={item.name} />
               </div>
 
-              <div className="overflow-y-auto overscroll-contain flex-1 px-5 pt-4 pb-2">
+              <div className="overflow-y-auto overscroll-contain flex-1 px-6 pt-4 pb-2">
                 {item.tags && item.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     {item.tags.map((tag) => (
@@ -397,7 +397,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
               <SheetHeader title="Spice level" onBack={() => setStep(hasCustomize ? 2 : 1)} />
 
               <div className="overflow-y-auto overscroll-contain flex-1 pb-24">
-                <p className="text-text-muted text-sm px-5 mt-5 mb-4">How much heat would you like?</p>
+                <p className="text-text-muted text-sm px-6 mt-5 mb-4">How much heat would you like?</p>
 
                 {/* Single column — full-width rows, no wasted space */}
                 <ul>
@@ -414,7 +414,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                       <li key={opt.value}>
                         <button
                           onClick={() => setSpice(opt.value)}
-                          className={`w-full flex items-center justify-between pl-5 pr-7 text-left
+                          className={`w-full flex items-center justify-between pl-6 pr-8 text-left
                             transition-colors duration-150 cursor-pointer select-none
                             active:bg-[rgba(104,90,90,0.06)]
                             ${active
@@ -442,7 +442,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                             )}
                           </span>
                         </button>
-                        <div className={`h-px mx-5 ${active ? 'bg-transparent' : 'bg-[rgba(104,90,90,0.07)]'}`} />
+                        <div className={`h-px mx-6 ${active ? 'bg-transparent' : 'bg-[rgba(104,90,90,0.07)]'}`} />
                       </li>
                     )
                   })}
@@ -462,7 +462,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
             <>
               <SheetHeader title="Add a note" onBack={() => setStep(3)} />
 
-              <div className="overflow-y-auto overscroll-contain flex-1 px-5 pb-28">
+              <div className="overflow-y-auto overscroll-contain flex-1 px-6 pb-28">
                 <p className="text-text-muted text-sm mt-5 mb-6">
                   Any special requests, allergies, or preferences?
                 </p>
