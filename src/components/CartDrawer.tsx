@@ -76,11 +76,11 @@ export default function CartDrawer({ open, onClose }: Props) {
       }
     : {
         position: 'fixed',
-        inset: 'auto 0 0 0',
-        width: '100%',
-        maxWidth: '100%',
+        inset: 'auto 10px 0 10px',
+        width: 'calc(100% - 20px)',
+        maxWidth: '480px',
         maxHeight: '88dvh',
-        margin: 0,
+        margin: '0 auto',
         padding: 0,
         border: 'none',
         borderRadius: '20px 20px 0 0',

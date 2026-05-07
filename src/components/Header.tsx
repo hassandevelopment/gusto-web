@@ -17,7 +17,7 @@ export default function Header({ cartCount, onCartOpen, onSearchOpen, hidden }: 
         (hidden ? '-translate-y-full' : 'translate-y-0')
       }
     >
-      <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div className="max-w-3xl mx-auto px-5 h-14 flex items-center justify-between">
         {/* Logo */}
         <div className="flex flex-col leading-none select-none">
           <span
