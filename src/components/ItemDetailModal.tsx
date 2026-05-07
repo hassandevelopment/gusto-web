@@ -4,6 +4,7 @@ import type { MenuItem } from '../types'
 import { useCart } from '../contexts/CartContext'
 import Button from './ui/Button'
 import QuantityStepper from './ui/QuantityStepper'
+import GustoPlaceholder from './ui/GustoPlaceholder'
 
 const TAG_LABELS: Record<string, string> = {
   vegetarian: 'Vegetarian',
@@ -76,9 +77,9 @@ export default function ItemDetailModal({ item, onClose }: Props) {
     onClose()
   }
 
-  const price = item?.price !== null && item?.price !== undefined
-    ? `BHD ${item.price.toFixed(2)}`
-    : 'Price TBD'
+  const unitPrice = item?.price !== null && item?.price !== undefined ? item.price : null
+  const price = unitPrice !== null ? `BHD ${unitPrice.toFixed(2)}` : 'Price TBD'
+  const totalPrice = unitPrice !== null ? `BHD ${(unitPrice * localQty).toFixed(2)}` : null
   const inCart = item ? !!cartItems[item.id] : false
 
   return (
@@ -105,8 +106,8 @@ export default function ItemDetailModal({ item, onClose }: Props) {
         <>
           {/* Image */}
           <div className="relative w-full flex-shrink-0 bg-bg overflow-hidden" style={{ height: '240px' }}>
-            {imgErrored ? (
-              <div className="absolute inset-0 skeleton" />
+            {!item.image || imgErrored ? (
+              <GustoPlaceholder />
             ) : (
               <img
                 src={item.image}
@@ -125,7 +126,8 @@ export default function ItemDetailModal({ item, onClose }: Props) {
               aria-label="Close"
               className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 text-white
                          flex items-center justify-center backdrop-blur-sm
-                         active:scale-[0.92] transition-transform cursor-pointer"
+                         hover:bg-black/60 active:scale-[0.92]
+                         transition-[transform,background-color] duration-150 cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -136,11 +138,18 @@ export default function ItemDetailModal({ item, onClose }: Props) {
                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
             {/* Name + price */}
             <div className="flex items-start justify-between gap-3 mb-2">
-              <h2 className="font-extrabold text-accent-dark leading-tight flex-1"
-                  style={{ fontSize: 'clamp(1.2rem, 5vw, 1.5rem)' }}>
+              <h2
+                className="text-ink leading-tight flex-1"
+                style={{
+                  fontFamily: 'var(--font-italic)',
+                  fontStyle: 'italic',
+                  fontWeight: 500,
+                  fontSize: 'clamp(1.25rem, 5vw, 1.55rem)',
+                }}
+              >
                 {item.name}
               </h2>
-              <p className="font-bold text-text text-lg tabular-nums shrink-0">{price}</p>
+              <p className="font-bold text-ink text-lg tabular-nums shrink-0">{price}</p>
             </div>
 
             {item.description && (
@@ -199,7 +208,9 @@ export default function ItemDetailModal({ item, onClose }: Props) {
               className="w-full"
               onClick={handleAdd}
             >
-              {inCart ? 'Update order' : `Add to order · ${price}`}
+              {inCart
+                ? totalPrice ? `Update order · ${totalPrice}` : 'Update order'
+                : totalPrice ? `Add to order · ${totalPrice}` : 'Add to order'}
             </Button>
           </div>
         </>

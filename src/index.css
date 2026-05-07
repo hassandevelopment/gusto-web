@@ -22,10 +22,10 @@
   --radius-card: 12px;
   --radius-pill: 9999px;
 
-  /* Shadows — warm-tinted to match #685A5A text hue */
-  --shadow-card:       0 2px 12px rgba(104, 90, 90, 0.10);
-  --shadow-card-hover: 0 6px 24px rgba(104, 90, 90, 0.18);
-  --shadow-pill:       0 2px 8px  rgba(104, 90, 90, 0.18);
+  /* Shadows — layered warm-tinted for depth */
+  --shadow-card:       0 1px 3px rgba(104,90,90,0.07), 0 4px 14px rgba(104,90,90,0.09);
+  --shadow-card-hover: 0 2px 6px rgba(104,90,90,0.08), 0 10px 28px rgba(104,90,90,0.16);
+  --shadow-pill:       0 2px 8px rgba(104,90,90,0.20), 0 1px 2px rgba(104,90,90,0.12);
 
   /* Easing */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
@@ -45,13 +45,30 @@ html {
   background-color: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Eliminate 300ms tap delay across the board */
   touch-action: manipulation;
 }
 
 body {
   min-height: 100dvh;
   line-height: 1.5;
+  position: relative;
+}
+
+/* ── Paper grain overlay — gives the page a physical, printed-menu quality ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  opacity: 0.028;
+  mix-blend-mode: multiply;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { display: none; }
 }
 
 #root {
@@ -106,6 +123,8 @@ button, a, [role="button"] {
 
 @media (prefers-reduced-motion: reduce) {
   .slide-up { animation: none; }
+  .stagger-in { animation: none; opacity: 1; }
+  .skeleton { animation: none; }
 }
 
 dialog[open] {

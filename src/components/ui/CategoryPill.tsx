@@ -15,8 +15,8 @@ export default function CategoryPill({ label, active = false, onClick }: Props) 
         'active:scale-[0.96] select-none cursor-pointer focus-visible:outline-2 ' +
         'focus-visible:outline-offset-2 focus-visible:outline-ink border ' +
         (active
-          ? 'bg-ink text-white font-semibold border-ink'
-          : 'text-text-muted font-medium border-[rgba(104,90,90,0.22)] hover:border-ink/50 hover:text-ink')
+          ? 'bg-accent text-white font-semibold border-accent shadow-sm'
+          : 'text-text-muted font-medium border-[rgba(104,90,90,0.22)] hover:border-accent/50 hover:text-accent')
       }
     >
       {label}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { MenuItem } from '../types'
 import Button from './ui/Button'
+import GustoPlaceholder from './ui/GustoPlaceholder'
 
 interface Props {
   item: MenuItem
@@ -22,10 +23,8 @@ const TAG_LABELS: Record<string, string> = {
 function ItemImage({ src, alt, eager }: { src: string; alt: string; eager?: boolean }) {
   const [errored, setErrored] = useState(false)
 
-  if (errored) {
-    return (
-      <div className="w-full h-full skeleton" aria-hidden="true" />
-    )
+  if (!src || errored) {
+    return <GustoPlaceholder />
   }
 
   return (
@@ -56,8 +55,10 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
       onClick={() => onTap?.(item)}
     >
       {/* Full-width photo */}
-      <div className="w-full aspect-[2/1] bg-bg flex-shrink-0">
+      <div className="w-full aspect-[2/1] bg-bg flex-shrink-0 relative">
         <ItemImage src={item.image} alt={altText} eager={eager} />
+        {/* gradient vignette — adds depth, reads like editorial print */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/[0.18] via-transparent to-transparent pointer-events-none" />
       </div>
 
       {/* Content */}

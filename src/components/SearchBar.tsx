@@ -31,7 +31,8 @@ export default function SearchBar({ query, onChange, onClose, headerHidden }: Pr
           aria-label="Close search"
           className="w-10 h-10 flex items-center justify-center rounded-full
                      text-text-muted hover:text-text active:scale-[0.92]
-                     transition-transform cursor-pointer flex-shrink-0"
+                     transition-transform cursor-pointer flex-shrink-0
+                     focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           <ArrowLeft size={20} strokeWidth={2} />
         </button>

@@ -1,10 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { X, Trash2, ChevronLeft } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { menuData } from '../data/menu'
 import Button from './ui/Button'
 import IconButton from './ui/IconButton'
 import QuantityStepper from './ui/QuantityStepper'
+import GustoPlaceholder from './ui/GustoPlaceholder'
+
+const CartThumbnail = memo(function CartThumbnail({ src, alt }: { src: string; alt: string }) {
+  const [err, setErr] = useState(false)
+  if (!src || err) return <GustoPlaceholder />
+  return <img src={src} alt={alt} className="w-full h-full object-cover" loading="lazy" onError={() => setErr(true)} />
+})
 
 interface Props {
   open: boolean
@@ -280,7 +287,7 @@ export default function CartDrawer({ open, onClose }: Props) {
                 {cartEntries.map(({ item, entry }) => (
                   <li key={item.id} className="py-4 flex gap-3">
                     <div className="w-16 h-16 rounded-[8px] overflow-hidden bg-bg flex-shrink-0">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                      <CartThumbnail src={item.image} alt={item.name} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p
