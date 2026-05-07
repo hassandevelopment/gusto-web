@@ -277,10 +277,10 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="md" className="flex-none px-4" onClick={handleAddAsIs}>
+                  <Button variant="ghost" size="sm" className="flex-none px-4 min-h-[38px]" onClick={handleAddAsIs}>
                     Add as-is
                   </Button>
-                  <Button variant="primary" size="md" className="flex-1" onClick={() => setStep(hasCustomize ? 2 : 3)}>
+                  <Button variant="primary" size="sm" className="flex-1 min-h-[38px]" onClick={() => setStep(hasCustomize ? 2 : 3)}>
                     Customise →
                   </Button>
                 </div>
@@ -293,64 +293,91 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
             <>
               <SheetHeader title="Customise" onBack={() => setStep(1)} />
 
-              <div className="overflow-y-auto overscroll-contain flex-1 px-5 pt-6 pb-28">
+              <div className="overflow-y-auto overscroll-contain flex-1 pb-28">
+
+                {/* Remove section — full-width rows with checkmark toggle */}
                 {ingredients.length > 0 && (
-                  <div className="mb-8">
-                    <p className="text-ink font-semibold mb-1" style={{ fontFamily: 'var(--font-wordmark)', fontSize: '0.9rem' }}>
-                      Remove ingredients
-                    </p>
-                    <p className="text-xs text-text-muted mb-4">All included by default — tap to remove</p>
-                    <div className="flex flex-wrap gap-2">
+                  <div>
+                    <div className="px-5 pt-5 pb-1">
+                      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted">
+                        Included ingredients
+                      </p>
+                      <p className="text-[11px] text-text-muted/60 mt-0.5">Tap to remove</p>
+                    </div>
+                    <ul className="mt-1">
                       {ingredients.map((ing) => {
                         const included = !removed.has(ing)
                         return (
-                          <button
-                            key={ing}
-                            onClick={() => toggleRemove(ing)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer select-none
-                              active:scale-[0.95] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/40 ${
-                              included
-                                ? 'bg-[#f0ede8] text-ink hover:bg-[#e8e3dc]'
-                                : 'bg-transparent text-text-muted/50 line-through border border-[rgba(104,90,90,0.15)]'
-                            }`}
-                          >
-                            {ing}
-                          </button>
+                          <li key={ing}>
+                            <button
+                              onClick={() => toggleRemove(ing)}
+                              className="w-full flex items-center justify-between px-5 py-3.5 text-left
+                                transition-colors duration-100 cursor-pointer select-none
+                                hover:bg-[rgba(104,90,90,0.03)] active:bg-[rgba(104,90,90,0.06)]"
+                            >
+                              <span className={`text-sm transition-all duration-150 ${included ? 'text-ink' : 'text-text-muted/50 line-through'}`}>
+                                {ing}
+                              </span>
+                              <span className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                included ? 'bg-ink' : 'border border-[rgba(104,90,90,0.25)]'
+                              }`}>
+                                {included && (
+                                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M1 3.5l2 2L8 1" />
+                                  </svg>
+                                )}
+                              </span>
+                            </button>
+                            <div className="h-px mx-5 bg-[rgba(104,90,90,0.06)]" />
+                          </li>
                         )
                       })}
-                    </div>
+                    </ul>
                   </div>
                 )}
 
-                {ingredients.length > 0 && addons.length > 0 && (
-                  <div className="h-px bg-[rgba(104,90,90,0.08)] mb-8" />
-                )}
-
+                {/* Add extras section — same clean row style */}
                 {addons.length > 0 && (
-                  <div>
-                    <p className="text-ink font-semibold mb-1" style={{ fontFamily: 'var(--font-wordmark)', fontSize: '0.9rem' }}>
-                      Add extras
-                    </p>
-                    <p className="text-xs text-text-muted mb-4">Tap anything you'd like to add</p>
-                    <div className="flex flex-wrap gap-2">
+                  <div className={ingredients.length > 0 ? 'mt-5' : ''}>
+                    <div className="px-5 pt-4 pb-1">
+                      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted">
+                        Add extras
+                      </p>
+                      <p className="text-[11px] text-text-muted/60 mt-0.5">Tap to add</p>
+                    </div>
+                    <ul className="mt-1">
                       {addons.map((addon) => {
                         const active = added.has(addon)
                         return (
-                          <button
-                            key={addon}
-                            onClick={() => toggleAdd(addon)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer select-none
-                              active:scale-[0.95] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/40 ${
-                              active
-                                ? 'bg-ink text-white border-ink'
-                                : 'bg-transparent text-text-muted border-[rgba(104,90,90,0.25)] hover:border-[rgba(104,90,90,0.5)] hover:text-ink'
-                            }`}
-                          >
-                            {active ? '✓  ' : ''}{addon}
-                          </button>
+                          <li key={addon}>
+                            <button
+                              onClick={() => toggleAdd(addon)}
+                              className="w-full flex items-center justify-between px-5 py-3.5 text-left
+                                transition-colors duration-100 cursor-pointer select-none
+                                hover:bg-[rgba(104,90,90,0.03)] active:bg-[rgba(104,90,90,0.06)]"
+                            >
+                              <span className={`text-sm transition-colors duration-150 ${active ? 'text-ink font-medium' : 'text-text-muted'}`}>
+                                {addon}
+                              </span>
+                              <span className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                active ? 'bg-ink' : 'border border-[rgba(104,90,90,0.25)]'
+                              }`}>
+                                {active ? (
+                                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M1 3.5l2 2L8 1" />
+                                  </svg>
+                                ) : (
+                                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-[rgba(104,90,90,0.4)]">
+                                    <path d="M4 1v6M1 4h6" />
+                                  </svg>
+                                )}
+                              </span>
+                            </button>
+                            <div className="h-px mx-5 bg-[rgba(104,90,90,0.06)]" />
+                          </li>
                         )
                       })}
-                    </div>
+                    </ul>
                   </div>
                 )}
               </div>

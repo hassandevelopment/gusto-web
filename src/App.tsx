@@ -152,21 +152,21 @@ export default function App() {
           <div className="max-w-2xl mx-auto">
             <button
               onClick={() => setDrawerOpen(true)}
-              className="w-full flex items-center gap-3 px-5 rounded-full
+              className="w-full flex items-center gap-2.5 px-4 rounded-full
                          bg-accent-dark text-white font-semibold shadow-pill
                          transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
                          hover:-translate-y-px hover:shadow-card-hover active:scale-[0.98]
                          cursor-pointer select-none"
-              style={{ minHeight: '52px' }}
+              style={{ minHeight: '44px' }}
               aria-label={`View order, ${totalQty} ${totalQty === 1 ? 'item' : 'items'}`}
             >
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white/15 flex-shrink-0">
-                <ShoppingBag size={16} strokeWidth={2} />
+              <span className="flex items-center justify-center w-7 h-7 rounded-full bg-white/15 flex-shrink-0">
+                <ShoppingBag size={14} strokeWidth={2} />
               </span>
-              <span className="flex-1 text-left text-sm">
+              <span className="flex-1 text-left text-[13px]">
                 View order · {totalQty} {totalQty === 1 ? 'item' : 'items'}
               </span>
-              <span className="font-bold tabular-nums text-sm flex-shrink-0">
+              <span className="font-bold tabular-nums text-[13px] flex-shrink-0">
                 BHD {totalPrice.toFixed(2)}
               </span>
             </button>
