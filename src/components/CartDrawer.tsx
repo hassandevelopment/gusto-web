@@ -231,10 +231,10 @@ export default function CartDrawer({ open, onClose }: Props) {
 
           {/* Done button — flex-shrink-0 keeps it pinned at bottom */}
           <div
-            className="flex-shrink-0 px-5 pt-3 bg-card border-t border-[rgba(104,90,90,0.10)]"
+            className="flex-shrink-0 px-5 pt-3 bg-card border-t border-[rgba(104,90,90,0.10)] flex flex-col items-center"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
           >
-            <Button variant="primary" size="lg" className="w-full max-w-[320px] mx-auto" onClick={onClose}>
+            <Button variant="primary" size="lg" className="w-full max-w-[320px]" onClick={onClose}>
               Done
             </Button>
           </div>
@@ -322,10 +322,10 @@ export default function CartDrawer({ open, onClose }: Props) {
           {/* Footer */}
           {!isEmpty && (
             <div
-              className="px-5 pt-4 border-t border-[rgba(104,90,90,0.12)] bg-card flex-shrink-0"
+              className="px-5 pt-4 border-t border-[rgba(104,90,90,0.12)] bg-card flex-shrink-0 flex flex-col items-center"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="w-full flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold text-text">
                   Total{' '}
                   <span className="text-text-muted font-normal">
@@ -336,7 +336,7 @@ export default function CartDrawer({ open, onClose }: Props) {
                   BHD {totalPrice.toFixed(2)}
                 </span>
               </div>
-              <Button variant="primary" size="lg" className="w-full max-w-[320px] mx-auto" onClick={() => setWaiterMode(true)}>
+              <Button variant="primary" size="lg" className="w-full max-w-[320px]" onClick={() => setWaiterMode(true)}>
                 Show waiter
               </Button>
             </div>

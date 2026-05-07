@@ -311,7 +311,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                           <li key={ing}>
                             <button
                               onClick={() => toggleRemove(ing)}
-                              className="w-full flex items-center justify-between px-6 text-left
+                              className="w-full flex items-center justify-between pl-6 pr-8 text-left
                                 transition-colors duration-100 cursor-pointer select-none
                                 hover:bg-[rgba(104,90,90,0.04)] active:bg-[rgba(104,90,90,0.08)]"
                               style={{ minHeight: '58px' }}
@@ -352,7 +352,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                           <li key={addon}>
                             <button
                               onClick={() => toggleAdd(addon)}
-                              className="w-full flex items-center justify-between px-6 text-left
+                              className="w-full flex items-center justify-between pl-6 pr-8 text-left
                                 transition-colors duration-100 cursor-pointer select-none
                                 hover:bg-[rgba(104,90,90,0.04)] active:bg-[rgba(104,90,90,0.08)]"
                               style={{ minHeight: '58px' }}
@@ -414,7 +414,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                       <li key={opt.value}>
                         <button
                           onClick={() => setSpice(opt.value)}
-                          className={`w-full flex items-center justify-between px-5 text-left
+                          className={`w-full flex items-center justify-between pl-5 pr-7 text-left
                             transition-colors duration-150 cursor-pointer select-none
                             active:bg-[rgba(104,90,90,0.06)]
                             ${active
