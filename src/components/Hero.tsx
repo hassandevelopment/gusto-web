@@ -6,14 +6,7 @@ interface Props {
 
 export default function Hero({ address, hours }: Props) {
   return (
-    <section className="relative bg-bg pt-9 pb-7 px-6 text-center overflow-hidden">
-      {/* warm terracotta radial wash — mimics natural light hitting paper */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse 90% 55% at 50% 0%, rgba(199,93,44,0.07) 0%, transparent 70%)',
-        }}
-      />
+    <section className="bg-bg pt-9 pb-7 px-6 text-center">
       {/* Wordmark */}
       <h1
         className="leading-none text-ink"

@@ -1,42 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * Tracks which section ID is currently in view.
- * Uses IntersectionObserver with a top-biased rootMargin so the topmost
- * visible section wins — matches how category navs feel in food apps.
+ * Tracks which section is currently active based on scroll position.
+ * Picks the last section whose top is at or above (scrollY + topOffset).
+ * Scroll-event based — reliably handles long sections where IntersectionObserver
+ * would stop firing after the section heading scrolls out of its trigger zone.
  */
-export function useScrollSpy(ids: string[], topOffset = 112): string {
+export function useScrollSpy(ids: string[], topOffset = 120): string {
   const [activeId, setActiveId] = useState(ids[0] ?? '')
-  const observer = useRef<IntersectionObserver | null>(null)
 
   useEffect(() => {
     if (ids.length === 0) return
 
-    observer.current?.disconnect()
-
-    observer.current = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-
-        if (visible.length > 0) {
-          setActiveId(visible[0].target.id)
+    function onScroll() {
+      const threshold = window.scrollY + topOffset + 8
+      let current = ids[0]
+      for (const id of ids) {
+        const el = document.getElementById(id)
+        if (el && el.getBoundingClientRect().top + window.scrollY <= threshold) {
+          current = id
         }
-      },
-      {
-        // Top region = header (56px) + category nav (56px) = 112px
-        rootMargin: `-${topOffset}px 0px -55% 0px`,
-        threshold: 0,
-      },
-    )
+      }
+      setActiveId(current)
+    }
 
-    ids.forEach((id) => {
-      const el = document.getElementById(id)
-      if (el) observer.current?.observe(el)
-    })
-
-    return () => observer.current?.disconnect()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
   }, [ids, topOffset])
 
   return activeId

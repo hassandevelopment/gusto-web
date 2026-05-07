@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import type { Category } from '../types'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Category, MenuItem } from '../types'
 import CategoryPill from './ui/CategoryPill'
 import { useScrollSpy } from '../hooks/useScrollSpy'
 
 interface Props {
   categories: Category[]
+  items: MenuItem[]
   headerHidden: boolean
 }
 
-export default function CategoryNav({ categories, headerHidden }: Props) {
+export default function CategoryNav({ categories, items, headerHidden }: Props) {
   const ids = categories.map((c) => c.id)
   const activeId = useScrollSpy(ids)
   const [clickedId, setClickedId] = useState<string | null>(null)
@@ -18,7 +19,16 @@ export default function CategoryNav({ categories, headerHidden }: Props) {
 
   const displayActiveId = clickedId ?? activeId
 
-  // Scroll the active pill into view whenever it changes
+  // Pick the first item with a real image from each category as its nav thumbnail
+  const catImage = useMemo(() =>
+    Object.fromEntries(
+      categories.map((cat) => [
+        cat.id,
+        items.find((i) => i.category === cat.id && i.image)?.image ?? '',
+      ])
+    ),
+  [categories, items])
+
   useEffect(() => {
     const pill = pillRefs.current.get(displayActiveId)
     if (pill && navRef.current) {
@@ -27,15 +37,14 @@ export default function CategoryNav({ categories, headerHidden }: Props) {
   }, [displayActiveId])
 
   function scrollToSection(id: string) {
-    // Immediately highlight the clicked pill — don't wait for scroll-spy
     setClickedId(id)
     clearTimeout(clickTimer.current)
     clickTimer.current = setTimeout(() => setClickedId(null), 1200)
 
     const el = document.getElementById(id)
     if (!el) return
-    const offset = headerHidden ? 56 : 112
-    const top = el.getBoundingClientRect().top + window.scrollY - offset - 12
+    const offset = headerHidden ? 64 : 120
+    const top = el.getBoundingClientRect().top + window.scrollY - offset - 8
     window.scrollTo({ top, behavior: 'smooth' })
   }
 
@@ -49,7 +58,7 @@ export default function CategoryNav({ categories, headerHidden }: Props) {
     >
       <div
         ref={navRef}
-        className="flex gap-2 overflow-x-auto px-4 py-2"
+        className="flex gap-2 overflow-x-auto px-4 py-2.5"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
         role="navigation"
         aria-label="Menu categories"
@@ -65,6 +74,7 @@ export default function CategoryNav({ categories, headerHidden }: Props) {
           >
             <CategoryPill
               label={cat.name}
+              image={catImage[cat.id]}
               active={displayActiveId === cat.id}
               onClick={() => scrollToSection(cat.id)}
             />

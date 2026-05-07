@@ -76,7 +76,7 @@ export default function App() {
           headerHidden={headerHidden}
         />
       ) : (
-        <CategoryNav categories={sortedCategories} headerHidden={headerHidden} />
+        <CategoryNav categories={sortedCategories} items={items} headerHidden={headerHidden} />
       )}
 
       <main className="max-w-3xl mx-auto px-4 pt-6 pb-32" id="menu-main">
@@ -133,7 +133,6 @@ export default function App() {
                 onAdd={(item) => add(item.id)}
                 onTap={setSelectedItem}
                 firstSection={catIdx === 0}
-                index={catIdx + 1}
               />
             )
           })
@@ -161,11 +160,11 @@ export default function App() {
             <button
               onClick={() => setDrawerOpen(true)}
               className="w-full flex items-center gap-3 px-5 rounded-full
-                         text-white font-semibold shadow-pill
+                         bg-accent-dark text-white font-semibold shadow-pill
                          transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
                          hover:-translate-y-px hover:shadow-card-hover active:scale-[0.98]
                          cursor-pointer select-none"
-              style={{ background: 'linear-gradient(135deg, #C75D2C 0%, #A84A20 100%)', minHeight: '52px' }}
+              style={{ minHeight: '52px' }}
               aria-label={`View order, ${totalQty} ${totalQty === 1 ? 'item' : 'items'}`}
             >
               <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white/15 flex-shrink-0">
