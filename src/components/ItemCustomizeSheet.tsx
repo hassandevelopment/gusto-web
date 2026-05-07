@@ -330,14 +330,20 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                 </button>
               </div>
 
-              {/* Scrollable with enough bottom padding so CTA never overlaps */}
-              <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-6" style={{ paddingBottom: '100px' }}>
+              <div className="overflow-y-auto overscroll-contain flex-1 px-5 pt-6 pb-28">
+
+                {/* Remove section */}
                 {ingredients.length > 0 && (
                   <div className="mb-8">
-                    <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted mb-1">
+                    <p
+                      className="text-ink font-semibold mb-1"
+                      style={{ fontFamily: 'var(--font-wordmark)', fontSize: '0.9rem' }}
+                    >
                       Remove ingredients
                     </p>
-                    <p className="text-xs text-text-muted/70 mb-3">Tap an ingredient to remove it</p>
+                    <p className="text-xs text-text-muted mb-4">
+                      All included by default — tap to remove
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {ingredients.map((ing) => {
                         const included = !removed.has(ing)
@@ -345,10 +351,10 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                           <button
                             key={ing}
                             onClick={() => toggleRemove(ing)}
-                            className={`px-4 py-2 rounded-full text-sm border transition-all duration-150 cursor-pointer select-none ${
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer select-none ${
                               included
-                                ? 'bg-ink text-white border-ink font-medium'
-                                : 'bg-bg text-text-muted/60 border-[rgba(104,90,90,0.18)] line-through'
+                                ? 'bg-[#f0ede8] text-ink'
+                                : 'bg-transparent text-text-muted/50 line-through border border-[rgba(104,90,90,0.15)]'
                             }`}
                           >
                             {ing}
@@ -359,12 +365,23 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                   </div>
                 )}
 
+                {/* Divider between sections */}
+                {ingredients.length > 0 && addons.length > 0 && (
+                  <div className="h-px bg-[rgba(104,90,90,0.08)] mb-8" />
+                )}
+
+                {/* Add extras section */}
                 {addons.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted mb-1">
+                    <p
+                      className="text-ink font-semibold mb-1"
+                      style={{ fontFamily: 'var(--font-wordmark)', fontSize: '0.9rem' }}
+                    >
                       Add extras
                     </p>
-                    <p className="text-xs text-text-muted/70 mb-3">Tap to add to your dish</p>
+                    <p className="text-xs text-text-muted mb-4">
+                      Tap anything you'd like to add
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {addons.map((addon) => {
                         const active = added.has(addon)
@@ -372,13 +389,14 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                           <button
                             key={addon}
                             onClick={() => toggleAdd(addon)}
-                            className={`px-4 py-2 rounded-full text-sm border transition-all duration-150 cursor-pointer select-none ${
+                            className={`px-4 py-2 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer select-none ${
                               active
-                                ? 'bg-ink text-white border-ink font-medium'
-                                : 'bg-bg text-text-muted border-[rgba(104,90,90,0.18)]'
+                                ? 'bg-ink text-white border-ink'
+                                : 'bg-transparent text-text-muted border-[rgba(104,90,90,0.25)] hover:border-[rgba(104,90,90,0.5)]'
                             }`}
                           >
-                            {active ? '✓ ' : '+ '}{addon}
+                            {active ? '✓  ' : ''}
+                            {addon}
                           </button>
                         )
                       })}
