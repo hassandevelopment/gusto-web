@@ -32,8 +32,7 @@ export default function MenuSection({ category, items, onAdd, onTap, firstSectio
         </span>
       </div>
 
-      {/* Item grid — single column mobile, 2-col sm+ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {items.map((item, i) => (
           <div
             key={item.id}

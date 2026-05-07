@@ -35,8 +35,8 @@ function ItemImage({ src, alt, eager }: { src: string; alt: string; eager?: bool
       loading={eager ? 'eager' : 'lazy'}
       fetchPriority={eager ? 'high' : 'auto'}
       decoding={eager ? 'sync' : 'async'}
-      width={160}
-      height={160}
+      width={600}
+      height={338}
       className="w-full h-full object-cover"
       onError={() => setErrored(true)}
     />
@@ -49,56 +49,53 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
 
   return (
     <article
-      className="flex gap-3 bg-card rounded-[12px] border border-[rgba(104,90,90,0.12)]
-                 shadow-card p-3 cursor-pointer
+      className="flex flex-col bg-card rounded-[12px] border border-[rgba(104,90,90,0.12)]
+                 shadow-card overflow-hidden cursor-pointer
                  transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
                  hover:-translate-y-px hover:shadow-card-hover active:scale-[0.99]"
       onClick={() => onTap?.(item)}
     >
-      {/* Thumbnail */}
-      <div className="w-[88px] h-[88px] flex-shrink-0 rounded-[8px] overflow-hidden bg-bg">
+      {/* Full-width photo */}
+      <div className="w-full aspect-video bg-bg flex-shrink-0">
         <ItemImage src={item.image} alt={altText} eager={eager} />
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col justify-between min-w-0 py-0.5">
-        <div>
-          <p
-            className="text-ink leading-tight line-clamp-1"
-            style={{
-              fontFamily: 'var(--font-italic)',
-              fontStyle: 'italic',
-              fontWeight: 500,
-              fontSize: '1.05rem',
-              letterSpacing: '0.005em',
-            }}
-          >
-            {item.name}
+      <div className="flex flex-col gap-1.5 p-3">
+        <p
+          className="text-ink leading-tight line-clamp-1"
+          style={{
+            fontFamily: 'var(--font-italic)',
+            fontStyle: 'italic',
+            fontWeight: 500,
+            fontSize: '1.05rem',
+            letterSpacing: '0.005em',
+          }}
+        >
+          {item.name}
+        </p>
+
+        {item.description && (
+          <p className="text-xs text-text-muted leading-snug line-clamp-2">
+            {item.description}
           </p>
+        )}
 
-          {item.description && (
-            <p className="text-xs text-text-muted mt-0.5 leading-snug line-clamp-2">
-              {item.description}
-            </p>
-          )}
+        {item.tags && item.tags.length > 0 && (
+          <div className="flex gap-1 flex-wrap">
+            {item.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+                           bg-success/10 text-success"
+              >
+                {TAG_LABELS[tag] ?? tag}
+              </span>
+            ))}
+          </div>
+        )}
 
-          {/* Dietary tags */}
-          {item.tags && item.tags.length > 0 && (
-            <div className="flex gap-1 mt-1.5 flex-wrap">
-              {item.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full
-                             bg-success/10 text-success"
-                >
-                  {TAG_LABELS[tag] ?? tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center justify-between mt-1">
           <p className="text-sm font-bold text-text tabular-nums">{price}</p>
           <Button
             variant="add"
