@@ -6,12 +6,11 @@ import { useCart } from './contexts/CartContext'
 import { useScrollDirection } from './hooks/useScrollSpy'
 import Header from './components/Header'
 import Hero from './components/Hero'
-import CategoryNav from './components/CategoryNav'
 import SearchBar from './components/SearchBar'
-import MenuSection from './components/MenuSection'
+import CategoryAccordion from './components/CategoryAccordion'
 import MenuItemCard from './components/MenuItemCard'
 import RestaurantInfo from './components/RestaurantInfo'
-import ItemDetailModal from './components/ItemDetailModal'
+import ItemCustomizeSheet from './components/ItemCustomizeSheet'
 import CartDrawer from './components/CartDrawer'
 
 export default function App() {
@@ -63,18 +62,16 @@ export default function App() {
         hours={restaurant.hours}
       />
 
-      {searchOpen ? (
+      {searchOpen && (
         <SearchBar
           query={searchQuery}
           onChange={setSearchQuery}
           onClose={handleSearchClose}
           headerHidden={headerHidden}
         />
-      ) : (
-        <CategoryNav categories={sortedCategories} items={items} headerHidden={headerHidden} />
       )}
 
-      <main className="max-w-3xl mx-auto px-4 pb-32" id="menu-main" style={{ paddingTop: '4rem' }}>
+      <main className="max-w-2xl mx-auto px-4 pb-32" style={{ paddingTop: '2.5rem' }}>
         {/* ── Search results ── */}
         {searchOpen ? (
           <>
@@ -95,7 +92,7 @@ export default function App() {
                 <p className="text-xs font-semibold text-text-muted mb-3 tabular-nums">
                   {searchResults!.length} {searchResults!.length === 1 ? 'result' : 'results'}
                 </p>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   {searchResults!.map((item, i) => (
                     <div
                       key={item.id}
@@ -114,23 +111,24 @@ export default function App() {
             )}
           </>
         ) : (
-          /* ── Normal menu ── */
-          sortedCategories.map((cat, catIdx) => {
-            const catItems = items.filter(
-              (item) => item.category === cat.id && item.available !== false,
-            )
-            if (catItems.length === 0) return null
-            return (
-              <MenuSection
-                key={cat.id}
-                category={cat}
-                items={catItems}
-                onAdd={(item) => add(item.id)}
-                onTap={setSelectedItem}
-                firstSection={catIdx === 0}
-              />
-            )
-          })
+          /* ── Accordion categories ── */
+          <div className="flex flex-col gap-3">
+            {sortedCategories.map((cat, catIdx) => {
+              const catItems = items.filter(
+                (item) => item.category === cat.id && item.available !== false,
+              )
+              if (catItems.length === 0) return null
+              return (
+                <CategoryAccordion
+                  key={cat.id}
+                  category={cat}
+                  items={catItems}
+                  onTap={setSelectedItem}
+                  defaultOpen={catIdx === 0}
+                />
+              )
+            })}
+          </div>
         )}
       </main>
 
@@ -151,7 +149,7 @@ export default function App() {
           className="fixed bottom-0 inset-x-0 z-40 px-4 pt-3"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
         >
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-2xl mx-auto">
             <button
               onClick={() => setDrawerOpen(true)}
               className="w-full flex items-center gap-3 px-5 rounded-full
@@ -176,7 +174,7 @@ export default function App() {
         </div>
       )}
 
-      <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+      <ItemCustomizeSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
       <CartDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
   )
