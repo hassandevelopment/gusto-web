@@ -6,7 +6,7 @@ interface Props {
 
 export default function Hero({ address, hours }: Props) {
   return (
-    <section className="bg-bg pt-9 pb-14 px-6 text-center">
+    <section className="bg-bg px-6 text-center" style={{ paddingTop: '2.25rem', paddingBottom: '4rem' }}>
       {/* Wordmark */}
       <h1
         className="leading-none text-ink"
