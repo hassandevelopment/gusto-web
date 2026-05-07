@@ -10,13 +10,7 @@ const ItemPhoto = memo(function ItemPhoto({ src, alt }: { src: string; alt: stri
   const [err, setErr] = useState(false)
   if (!src || err) return <GustoPlaceholder />
   return (
-    <img
-      src={src}
-      alt={alt}
-      className="w-full h-full object-cover"
-      loading="eager"
-      onError={() => setErr(true)}
-    />
+    <img src={src} alt={alt} className="w-full h-full object-cover" loading="eager" onError={() => setErr(true)} />
   )
 })
 
@@ -29,30 +23,8 @@ const TAG_LABELS: Record<string, string> = {
   seafood: 'Seafood',
 }
 
-const SPICE_OPTIONS: { value: 0 | 1 | 2 | 3; label: string; bars: number }[] = [
-  { value: 0, label: 'None',   bars: 0 },
-  { value: 1, label: 'Mild',   bars: 1 },
-  { value: 2, label: 'Medium', bars: 2 },
-  { value: 3, label: 'Hot',    bars: 3 },
-]
-
-function HeatBars({ count, active }: { count: number; active: boolean }) {
-  return (
-    <div className="flex gap-[3px] justify-center mt-1.5">
-      {[1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className={`rounded-sm transition-all duration-200 ${
-            i <= count
-              ? active ? 'bg-white' : 'bg-ink'
-              : active ? 'bg-white/25' : 'bg-[rgba(104,90,90,0.18)]'
-          }`}
-          style={{ width: '8px', height: i <= count ? `${8 + i * 3}px` : '8px' }}
-        />
-      ))}
-    </div>
-  )
-}
+// step 1 = details, 2 = customise (skipped if no options), 3 = spice, 4 = notes
+type Step = 1 | 2 | 3 | 4
 
 interface Props {
   item: MenuItem | null
@@ -64,8 +36,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
 
-  // step 1 = details, step 2 = customise, step 3 = finishing touches (spice + notes)
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<Step>(1)
   const [removed, setRemoved] = useState<Set<string>>(new Set())
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [spice, setSpice] = useState<0 | 1 | 2 | 3>(0)
@@ -112,24 +83,25 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
   const addons = item ? (CATEGORY_ADDONS[item.category] ?? []) : []
   const hasCustomize = ingredients.length > 0 || addons.length > 0
 
+  // Total visible steps: 1 (details) + optional 2 (customise) + 3 (spice) + 4 (notes)
+  const totalSteps = hasCustomize ? 4 : 3
+
+  // Map step number → visual dot index (1-based)
+  function dotIndex(s: Step): number {
+    if (!hasCustomize) {
+      if (s === 1) return 1
+      if (s === 3) return 2
+      return 3 // step 4
+    }
+    return s
+  }
+  const currentDot = dotIndex(step)
+
   function toggleRemove(ing: string) {
-    setRemoved((prev) => {
-      const next = new Set(prev)
-      next.has(ing) ? next.delete(ing) : next.add(ing)
-      return next
-    })
+    setRemoved((prev) => { const n = new Set(prev); n.has(ing) ? n.delete(ing) : n.add(ing); return n })
   }
-
   function toggleAdd(addon: string) {
-    setAdded((prev) => {
-      const next = new Set(prev)
-      next.has(addon) ? next.delete(addon) : next.add(addon)
-      return next
-    })
-  }
-
-  function handleCustomise() {
-    setStep(hasCustomize ? 2 : 3)
+    setAdded((prev) => { const n = new Set(prev); n.has(addon) ? n.delete(addon) : n.add(addon); return n })
   }
 
   function handleAddAsIs() {
@@ -138,7 +110,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
     onClose()
   }
 
-  function handleAddToOrder() {
+  function handleFinalAdd() {
     if (!item) return
     const customNotes = buildNotes([...removed], [...added], spice)
     const allNotes = [customNotes, notes.trim()].filter(Boolean).join(' | ')
@@ -162,6 +134,45 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
     overflow: 'hidden',
   }
 
+  /* ── Shared header bar ── */
+  function SheetHeader({ title, onBack }: { title: string; onBack: () => void }) {
+    return (
+      <div className="flex items-center justify-between px-5 py-3 border-b border-[rgba(104,90,90,0.10)] flex-shrink-0">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1 text-text-muted hover:text-ink transition-colors cursor-pointer select-none"
+        >
+          <ChevronLeft size={18} strokeWidth={1.75} />
+          <span className="text-sm font-medium">Back</span>
+        </button>
+        <h2 className="text-ink" style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic', fontSize: '1.1rem' }}>
+          {title}
+        </h2>
+        <button
+          ref={closeRef}
+          onClick={onClose}
+          aria-label="Close"
+          className="w-9 h-9 rounded-full bg-bg flex items-center justify-center
+                     text-text-muted hover:text-ink active:scale-[0.92] transition-transform cursor-pointer"
+        >
+          <X size={18} />
+        </button>
+      </div>
+    )
+  }
+
+  /* ── Shared sticky footer ── */
+  function SheetFooter({ children }: { children: React.ReactNode }) {
+    return (
+      <div
+        className="flex-shrink-0 px-5 pt-3 border-t border-[rgba(104,90,90,0.10)] bg-card"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
+      >
+        {children}
+      </div>
+    )
+  }
+
   return (
     <dialog
       ref={dialogRef}
@@ -176,13 +187,13 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
           {/* Step dots */}
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="flex items-center gap-2">
-              {([1, 2, 3] as const).map((s) => (
+              {Array.from({ length: totalSteps }, (_, i) => i + 1).map((dot) => (
                 <div
-                  key={s}
+                  key={dot}
                   className={`rounded-full transition-all duration-300 ${
-                    s === step
+                    dot === currentDot
                       ? 'w-5 h-2 bg-ink'
-                      : s < step
+                      : dot < currentDot
                       ? 'w-2 h-2 bg-ink/40'
                       : 'w-2 h-2 bg-[rgba(104,90,90,0.18)]'
                   }`}
@@ -191,7 +202,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
             </div>
           </div>
 
-          {/* ─── STEP 1: Item Details ─── */}
+          {/* ══ STEP 1 — Item details ══ */}
           {step === 1 && (
             <>
               <div className="absolute top-4 right-4 z-10">
@@ -224,38 +235,21 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                     ))}
                   </div>
                 )}
-
                 <h2
                   className="text-ink mb-2"
-                  style={{
-                    fontFamily: 'var(--font-italic)',
-                    fontStyle: 'italic',
-                    fontWeight: 500,
-                    fontSize: 'clamp(1.3rem, 5.5vw, 1.6rem)',
-                    lineHeight: 1.2,
-                  }}
+                  style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic', fontWeight: 500, fontSize: 'clamp(1.3rem, 5.5vw, 1.6rem)', lineHeight: 1.2 }}
                 >
                   {item.name}
                 </h2>
-
                 {item.description && (
-                  <p className="text-text-muted text-sm leading-relaxed mb-4">
-                    {item.description}
-                  </p>
+                  <p className="text-text-muted text-sm leading-relaxed mb-4">{item.description}</p>
                 )}
-
-                <p
-                  className="text-ink tabular-nums"
-                  style={{ fontFamily: 'var(--font-wordmark)', fontWeight: 700, fontSize: '1.1rem' }}
-                >
+                <p className="text-ink tabular-nums" style={{ fontFamily: 'var(--font-wordmark)', fontWeight: 700, fontSize: '1.1rem' }}>
                   {item.price !== null ? `BHD ${item.price.toFixed(2)}` : '—'}
                 </p>
               </div>
 
-              <div
-                className="flex-shrink-0 px-5 pt-4 border-t border-[rgba(104,90,90,0.10)] bg-card"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
-              >
+              <SheetFooter>
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-semibold text-text-muted">Quantity</span>
                   <div className="inline-flex items-center gap-3">
@@ -263,87 +257,49 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                       onClick={() => setQty((q) => Math.max(1, q - 1))}
                       disabled={qty <= 1}
                       aria-label="Decrease quantity"
-                      className="w-8 h-8 rounded-full bg-bg border border-[rgba(104,90,90,0.18)]
-                                 flex items-center justify-center text-ink
-                                 disabled:opacity-40 disabled:pointer-events-none
-                                 active:scale-[0.92] transition-transform cursor-pointer"
+                      className="w-8 h-8 rounded-full bg-bg border border-[rgba(104,90,90,0.18)] flex items-center justify-center
+                                 text-ink disabled:opacity-40 disabled:pointer-events-none active:scale-[0.92] transition-transform cursor-pointer"
                     >
                       <Minus size={14} strokeWidth={2} />
                     </button>
-                    <span
-                      className="min-w-[24px] text-center text-sm font-bold text-ink tabular-nums select-none"
-                      aria-live="polite"
-                    >
+                    <span className="min-w-[24px] text-center text-sm font-bold text-ink tabular-nums select-none" aria-live="polite">
                       {qty}
                     </span>
                     <button
                       onClick={() => setQty((q) => Math.min(20, q + 1))}
                       disabled={qty >= 20}
                       aria-label="Increase quantity"
-                      className="w-8 h-8 rounded-full bg-bg border border-[rgba(104,90,90,0.18)]
-                                 flex items-center justify-center text-ink
-                                 disabled:opacity-40 disabled:pointer-events-none
-                                 active:scale-[0.92] transition-transform cursor-pointer"
+                      className="w-8 h-8 rounded-full bg-bg border border-[rgba(104,90,90,0.18)] flex items-center justify-center
+                                 text-ink disabled:opacity-40 disabled:pointer-events-none active:scale-[0.92] transition-transform cursor-pointer"
                     >
                       <Plus size={14} strokeWidth={2} />
                     </button>
                   </div>
                 </div>
-
                 <div className="flex gap-2">
                   <Button variant="ghost" size="md" className="flex-none px-4" onClick={handleAddAsIs}>
                     Add as-is
                   </Button>
-                  <Button variant="primary" size="md" className="flex-1" onClick={handleCustomise}>
+                  <Button variant="primary" size="md" className="flex-1" onClick={() => setStep(hasCustomize ? 2 : 3)}>
                     Customise →
                   </Button>
                 </div>
-              </div>
+              </SheetFooter>
             </>
           )}
 
-          {/* ─── STEP 2: Customise ─── */}
+          {/* ══ STEP 2 — Customise ══ */}
           {step === 2 && (
             <>
-              <div className="flex items-center justify-between px-5 py-3 border-b border-[rgba(104,90,90,0.10)] flex-shrink-0">
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex items-center gap-1 text-text-muted hover:text-ink transition-colors cursor-pointer select-none"
-                >
-                  <ChevronLeft size={18} strokeWidth={1.75} />
-                  <span className="text-sm font-medium">Back</span>
-                </button>
-                <h2
-                  className="text-ink"
-                  style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic', fontSize: '1.1rem' }}
-                >
-                  Customise
-                </h2>
-                <button
-                  ref={closeRef}
-                  onClick={onClose}
-                  aria-label="Close"
-                  className="w-9 h-9 rounded-full bg-bg flex items-center justify-center
-                             text-text-muted hover:text-ink active:scale-[0.92] transition-transform cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+              <SheetHeader title="Customise" onBack={() => setStep(1)} />
 
               <div className="overflow-y-auto overscroll-contain flex-1 px-5 pt-6 pb-28">
-
-                {/* Remove section */}
                 {ingredients.length > 0 && (
                   <div className="mb-8">
-                    <p
-                      className="text-ink font-semibold mb-1"
-                      style={{ fontFamily: 'var(--font-wordmark)', fontSize: '0.9rem' }}
-                    >
+                    <p className="text-ink font-semibold mb-1" style={{ fontFamily: 'var(--font-wordmark)', fontSize: '0.9rem' }}>
                       Remove ingredients
                     </p>
-                    <p className="text-xs text-text-muted mb-4">
-                      All included by default — tap to remove
-                    </p>
+                    <p className="text-xs text-text-muted mb-4">All included by default — tap to remove</p>
                     <div className="flex flex-wrap gap-2">
                       {ingredients.map((ing) => {
                         const included = !removed.has(ing)
@@ -365,23 +321,16 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                   </div>
                 )}
 
-                {/* Divider between sections */}
                 {ingredients.length > 0 && addons.length > 0 && (
                   <div className="h-px bg-[rgba(104,90,90,0.08)] mb-8" />
                 )}
 
-                {/* Add extras section */}
                 {addons.length > 0 && (
                   <div>
-                    <p
-                      className="text-ink font-semibold mb-1"
-                      style={{ fontFamily: 'var(--font-wordmark)', fontSize: '0.9rem' }}
-                    >
+                    <p className="text-ink font-semibold mb-1" style={{ fontFamily: 'var(--font-wordmark)', fontSize: '0.9rem' }}>
                       Add extras
                     </p>
-                    <p className="text-xs text-text-muted mb-4">
-                      Tap anything you'd like to add
-                    </p>
+                    <p className="text-xs text-text-muted mb-4">Tap anything you'd like to add</p>
                     <div className="flex flex-wrap gap-2">
                       {addons.map((addon) => {
                         const active = added.has(addon)
@@ -395,8 +344,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                                 : 'bg-transparent text-text-muted border-[rgba(104,90,90,0.25)] hover:border-[rgba(104,90,90,0.5)]'
                             }`}
                           >
-                            {active ? '✓  ' : ''}
-                            {addon}
+                            {active ? '✓  ' : ''}{addon}
                           </button>
                         )
                       })}
@@ -405,108 +353,100 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                 )}
               </div>
 
-              <div
-                className="flex-shrink-0 px-5 pt-3 border-t border-[rgba(104,90,90,0.10)] bg-card"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
-              >
+              <SheetFooter>
                 <Button variant="primary" size="lg" className="w-full" onClick={() => setStep(3)}>
                   Next →
                 </Button>
-              </div>
+              </SheetFooter>
             </>
           )}
 
-          {/* ─── STEP 3: Finishing touches (spice + notes) ─── */}
+          {/* ══ STEP 3 — Spice level ══ */}
           {step === 3 && (
             <>
-              <div className="flex items-center justify-between px-5 py-3 border-b border-[rgba(104,90,90,0.10)] flex-shrink-0">
-                <button
-                  onClick={() => setStep(hasCustomize ? 2 : 1)}
-                  className="flex items-center gap-1 text-text-muted hover:text-ink transition-colors cursor-pointer select-none"
-                >
-                  <ChevronLeft size={18} strokeWidth={1.75} />
-                  <span className="text-sm font-medium">Back</span>
-                </button>
-                <h2
-                  className="text-ink"
-                  style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic', fontSize: '1.1rem' }}
-                >
-                  Finishing touches
-                </h2>
-                <button
-                  ref={closeRef}
-                  onClick={onClose}
-                  aria-label="Close"
-                  className="w-9 h-9 rounded-full bg-bg flex items-center justify-center
-                             text-text-muted hover:text-ink active:scale-[0.92] transition-transform cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+              <SheetHeader title="Spice level" onBack={() => setStep(hasCustomize ? 2 : 1)} />
 
-              <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-6" style={{ paddingBottom: '110px' }}>
-                {/* Spice level */}
-                <div className="mb-8">
-                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted mb-1">
-                    Spice level
-                  </p>
-                  <p className="text-xs text-text-muted/70 mb-4">How much heat would you like?</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {SPICE_OPTIONS.map((opt) => {
-                      const active = spice === opt.value
-                      return (
-                        <button
-                          key={opt.value}
-                          onClick={() => setSpice(opt.value)}
-                          className={`rounded-xl py-3 px-2 flex flex-col items-center border-2 transition-all duration-200 cursor-pointer select-none ${
-                            active
-                              ? 'bg-ink text-white border-ink'
-                              : 'bg-bg text-ink border-[rgba(104,90,90,0.15)] hover:border-[rgba(104,90,90,0.4)]'
-                          }`}
+              <div className="overflow-y-auto overscroll-contain flex-1 px-5 pb-28">
+                <p className="text-text-muted text-sm mt-5 mb-8">How much heat would you like?</p>
+
+                {/* Clean 2×2 card grid — text only, no icons */}
+                <div className="grid grid-cols-2 gap-3">
+                  {(
+                    [
+                      { value: 0 as const, label: 'No spice',  sub: 'Plain, as it comes' },
+                      { value: 1 as const, label: 'Mild',      sub: 'A gentle warmth'     },
+                      { value: 2 as const, label: 'Medium',    sub: 'Noticeably spicy'     },
+                      { value: 3 as const, label: 'Hot',       sub: 'Bold & fiery'         },
+                    ] as const
+                  ).map((opt) => {
+                    const active = spice === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => setSpice(opt.value)}
+                        className={`rounded-2xl p-4 text-left border-2 transition-all duration-200 cursor-pointer select-none ${
+                          active
+                            ? 'bg-ink text-white border-ink'
+                            : 'bg-bg text-ink border-[rgba(104,90,90,0.15)] hover:border-[rgba(104,90,90,0.4)]'
+                        }`}
+                      >
+                        <p
+                          className="font-semibold text-sm leading-tight mb-1"
+                          style={{ fontFamily: 'var(--font-wordmark)' }}
                         >
-                          <HeatBars count={opt.bars} active={active} />
-                          <span
-                            className={`mt-2 text-[11px] font-semibold leading-none ${active ? 'text-white' : 'text-text-muted'}`}
-                            style={{ fontFamily: 'var(--font-wordmark)' }}
-                          >
-                            {opt.label}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-text-muted mb-1">
-                    Add a note
-                  </p>
-                  <p className="text-xs text-text-muted/70 mb-3">Allergies, preferences, or anything else</p>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="e.g. extra crispy, no onion, allergy to nuts…"
-                    rows={3}
-                    maxLength={200}
-                    className="w-full rounded-xl border border-[rgba(104,90,90,0.18)] bg-bg px-4 py-3
-                               text-sm text-ink placeholder:text-text-muted/50 resize-none
-                               focus:outline-none focus:border-ink/40 transition-colors"
-                    style={{ fontFamily: 'var(--font-sans)' }}
-                  />
+                          {opt.label}
+                        </p>
+                        <p className={`text-xs leading-snug ${active ? 'text-white/60' : 'text-text-muted'}`}>
+                          {opt.sub}
+                        </p>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
-              <div
-                className="flex-shrink-0 px-5 pt-3 border-t border-[rgba(104,90,90,0.10)] bg-card"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
-              >
-                <Button variant="primary" size="lg" className="w-full" onClick={handleAddToOrder}>
+              <SheetFooter>
+                <Button variant="primary" size="lg" className="w-full" onClick={() => setStep(4)}>
+                  Next →
+                </Button>
+              </SheetFooter>
+            </>
+          )}
+
+          {/* ══ STEP 4 — Add a note ══ */}
+          {step === 4 && (
+            <>
+              <SheetHeader title="Add a note" onBack={() => setStep(3)} />
+
+              <div className="overflow-y-auto overscroll-contain flex-1 px-5 pb-28">
+                <p className="text-text-muted text-sm mt-5 mb-6">
+                  Any special requests, allergies, or preferences?
+                </p>
+
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="e.g. extra crispy, no onion, allergy to nuts…"
+                  rows={5}
+                  maxLength={200}
+                  autoFocus
+                  className="w-full rounded-2xl border border-[rgba(104,90,90,0.18)] bg-bg px-4 py-3.5
+                             text-sm text-ink placeholder:text-text-muted/50 resize-none leading-relaxed
+                             focus:outline-none focus:border-ink/40 transition-colors"
+                  style={{ fontFamily: 'var(--font-sans)' }}
+                />
+                <p className="text-right text-xs text-text-muted/50 mt-1.5 tabular-nums">
+                  {notes.length}/200
+                </p>
+              </div>
+
+              <SheetFooter>
+                <Button variant="primary" size="lg" className="w-full" onClick={handleFinalAdd}>
                   {item.price !== null
                     ? `Add to order · BHD ${totalPrice.toFixed(2)}`
                     : 'Add to order'}
                 </Button>
-              </div>
+              </SheetFooter>
             </>
           )}
         </>
