@@ -11,7 +11,11 @@ interface Props {
 
 export default function MenuSection({ category, items, onAdd, onTap, firstSection }: Props) {
   return (
-    <section id={category.id} className="mb-16 scroll-mt-[120px]">
+    <section
+      id={category.id}
+      className="scroll-mt-[120px]"
+      style={{ marginBottom: '5rem', paddingTop: firstSection ? 0 : '3rem' }}
+    >
       {/* Thin rule + heading — makes every new section clearly distinct */}
       <div className="flex items-center gap-3 mb-5">
         <div className="h-px flex-1 bg-[rgba(104,90,90,0.15)]" />
