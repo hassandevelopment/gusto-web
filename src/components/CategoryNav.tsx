@@ -58,7 +58,7 @@ export default function CategoryNav({ categories, items, headerHidden }: Props) 
     >
       <div
         ref={navRef}
-        className="flex gap-2 overflow-x-auto px-4 py-2.5"
+        className="flex gap-2 overflow-x-auto px-4 py-3"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
         role="navigation"
         aria-label="Menu categories"

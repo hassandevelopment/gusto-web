@@ -6,7 +6,7 @@ interface Props {
 
 export default function Hero({ address, hours }: Props) {
   return (
-    <section className="bg-bg pt-9 pb-10 px-6 text-center">
+    <section className="bg-bg pt-9 pb-14 px-6 text-center">
       {/* Wordmark */}
       <h1
         className="leading-none text-ink"
