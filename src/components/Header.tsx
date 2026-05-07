@@ -63,7 +63,7 @@ export default function Header({ cartCount, onCartOpen, onSearchOpen, hidden }: 
               />
               <span
                 className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full
-                           bg-accent text-white text-[10px] font-bold
+                           bg-ink text-white text-[10px] font-bold
                            flex items-center justify-center pointer-events-none"
                 aria-live="polite"
                 aria-atomic="true"

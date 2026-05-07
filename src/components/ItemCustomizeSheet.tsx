@@ -307,9 +307,10 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                           <button
                             key={ing}
                             onClick={() => toggleRemove(ing)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer select-none ${
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer select-none
+                              active:scale-[0.95] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/40 ${
                               included
-                                ? 'bg-[#f0ede8] text-ink'
+                                ? 'bg-[#f0ede8] text-ink hover:bg-[#e8e3dc]'
                                 : 'bg-transparent text-text-muted/50 line-through border border-[rgba(104,90,90,0.15)]'
                             }`}
                           >
@@ -338,10 +339,11 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                           <button
                             key={addon}
                             onClick={() => toggleAdd(addon)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer select-none ${
+                            className={`px-4 py-2 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer select-none
+                              active:scale-[0.95] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/40 ${
                               active
                                 ? 'bg-ink text-white border-ink'
-                                : 'bg-transparent text-text-muted border-[rgba(104,90,90,0.25)] hover:border-[rgba(104,90,90,0.5)]'
+                                : 'bg-transparent text-text-muted border-[rgba(104,90,90,0.25)] hover:border-[rgba(104,90,90,0.5)] hover:text-ink'
                             }`}
                           >
                             {active ? '✓  ' : ''}{addon}
@@ -384,10 +386,11 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                       <button
                         key={opt.value}
                         onClick={() => setSpice(opt.value)}
-                        className={`rounded-2xl p-4 text-left border-2 transition-all duration-200 cursor-pointer select-none ${
+                        className={`rounded-2xl p-4 text-left border-2 transition-all duration-200 cursor-pointer select-none
+                          active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/40 ${
                           active
-                            ? 'bg-ink text-white border-ink'
-                            : 'bg-bg text-ink border-[rgba(104,90,90,0.15)] hover:border-[rgba(104,90,90,0.4)]'
+                            ? 'bg-ink text-white border-ink shadow-card'
+                            : 'bg-bg text-ink border-[rgba(104,90,90,0.15)] hover:border-[rgba(104,90,90,0.4)] hover:bg-[#f7f4f1]'
                         }`}
                       >
                         <p
@@ -432,7 +435,8 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
                   autoFocus
                   className="w-full rounded-2xl border border-[rgba(104,90,90,0.18)] bg-bg px-4 py-3.5
                              text-sm text-ink placeholder:text-text-muted/50 resize-none leading-relaxed
-                             focus:outline-none focus:border-ink/40 transition-colors"
+                             focus:outline-none focus:border-ink/50 focus:shadow-[0_0_0_3px_rgba(45,40,40,0.07)]
+                             transition-[border-color,box-shadow] duration-150"
                   style={{ fontFamily: 'var(--font-sans)' }}
                 />
                 <p className="text-right text-xs text-text-muted/50 mt-1.5 tabular-nums">

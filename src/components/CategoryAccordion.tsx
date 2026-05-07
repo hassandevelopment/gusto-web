@@ -30,12 +30,20 @@ export default function CategoryAccordion({ category, items, onTap, defaultOpen 
   const thumbSrc = items.find((i) => i.image)?.image ?? ''
 
   return (
-    <div className="rounded-2xl overflow-hidden bg-card shadow-card">
+    <div
+      className="rounded-2xl overflow-hidden bg-card shadow-card transition-shadow duration-200"
+      style={{ boxShadow: open ? '0 2px 8px rgba(104,90,90,0.10), 0 8px 24px rgba(104,90,90,0.10)' : undefined }}
+    >
       {/* Row header */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className={`w-full flex items-center gap-3 px-4 transition-colors duration-200 cursor-pointer select-none ${open ? 'bg-ink text-white' : 'bg-card text-ink'}`}
+        className={`w-full flex items-center gap-3 px-4 transition-colors duration-200 cursor-pointer select-none
+          focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink/40
+          ${open
+            ? 'bg-ink text-white'
+            : 'bg-card text-ink hover:bg-[#f7f4f1] active:bg-[#f0ede8]'
+          }`}
         style={{ minHeight: '68px' }}
       >
         {/* Thumbnail */}
@@ -58,7 +66,7 @@ export default function CategoryAccordion({ category, items, onTap, defaultOpen 
 
         {/* Item count */}
         <span
-          className={`text-xs font-semibold tabular-nums flex-shrink-0 ${open ? 'text-white/60' : 'text-text-muted'}`}
+          className={`text-xs font-semibold tabular-nums flex-shrink-0 transition-colors duration-200 ${open ? 'text-white/60' : 'text-text-muted'}`}
           style={{ fontFamily: 'var(--font-wordmark)' }}
         >
           {items.length}
@@ -68,7 +76,7 @@ export default function CategoryAccordion({ category, items, onTap, defaultOpen 
         <ChevronDown
           size={18}
           strokeWidth={2}
-          className={`flex-shrink-0 transition-transform duration-300 ${open ? 'rotate-180 text-white/70' : 'text-text-muted'}`}
+          className={`flex-shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${open ? 'rotate-180 text-white/70' : 'text-text-muted'}`}
         />
       </button>
 
@@ -80,8 +88,11 @@ export default function CategoryAccordion({ category, items, onTap, defaultOpen 
               <button
                 key={item.id}
                 onClick={() => onTap(item)}
-                className="stagger-in text-left bg-bg rounded-xl overflow-hidden shadow-card
-                           active:scale-[0.97] transition-transform duration-150 cursor-pointer"
+                className="accordion-item-in text-left bg-bg rounded-xl overflow-hidden cursor-pointer select-none
+                           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/40
+                           transition-[transform,box-shadow] duration-200 ease-out
+                           hover:-translate-y-0.5 hover:shadow-card-hover
+                           active:scale-[0.97] active:shadow-none"
                 style={{ '--i': Math.min(i, 8) } as React.CSSProperties}
               >
                 {/* Photo */}

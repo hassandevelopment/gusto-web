@@ -82,14 +82,19 @@ button, a, [role="button"] {
 }
 
 /* ── Stagger utility for CSS cascade reveals ────────────────────────────── */
-/* Usage: style="--i: 0" through "--i: 5" on list items */
 .stagger-in {
-  animation: fadeSlideUp 0.4s var(--ease-spring) both;
-  animation-delay: calc(var(--i, 0) * 60ms);
+  animation: fadeSlideUp 0.38s var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* ── Accordion grid item entrance (faster, tighter stagger) ─────────────── */
+.accordion-item-in {
+  animation: fadeSlideUp 0.28s var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 30ms);
 }
 
 @keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -124,6 +129,7 @@ button, a, [role="button"] {
 @media (prefers-reduced-motion: reduce) {
   .slide-up { animation: none; }
   .stagger-in { animation: none; opacity: 1; }
+  .accordion-item-in { animation: none; opacity: 1; }
   .skeleton { animation: none; }
 }
 
