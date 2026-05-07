@@ -113,7 +113,7 @@ export default function App() {
         ) : (
           /* ── Accordion categories ── */
           <div className="flex flex-col gap-3">
-            {sortedCategories.map((cat, catIdx) => {
+            {sortedCategories.map((cat) => {
               const catItems = items.filter(
                 (item) => item.category === cat.id && item.available !== false,
               )
@@ -124,7 +124,7 @@ export default function App() {
                   category={cat}
                   items={catItems}
                   onTap={setSelectedItem}
-                  defaultOpen={catIdx === 0}
+                  defaultOpen={false}
                 />
               )
             })}
