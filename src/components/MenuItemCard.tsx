@@ -54,22 +54,22 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
                  hover:-translate-y-px hover:shadow-card-hover active:scale-[0.99]"
       onClick={() => onTap?.(item)}
     >
-      {/* Full-width photo */}
-      <div className="w-full aspect-[2/1] bg-bg flex-shrink-0 relative">
+      {/* Full-width photo — 8:3 is shallower than 2:1, less dominant */}
+      <div className="w-full aspect-[8/3] bg-bg flex-shrink-0 relative">
         <ItemImage src={item.image} alt={altText} eager={eager} />
         {/* gradient vignette — adds depth, reads like editorial print */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/[0.18] via-transparent to-transparent pointer-events-none" />
       </div>
 
       {/* Content */}
-      <div className="flex flex-col gap-1.5 p-3">
+      <div className="flex flex-col gap-2 p-4">
         <p
           className="text-ink leading-tight line-clamp-1"
           style={{
             fontFamily: 'var(--font-italic)',
             fontStyle: 'italic',
             fontWeight: 500,
-            fontSize: '1.05rem',
+            fontSize: '1.2rem',
             letterSpacing: '0.005em',
           }}
         >
@@ -77,7 +77,7 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
         </p>
 
         {item.description && (
-          <p className="text-sm text-text-muted leading-snug line-clamp-2">
+          <p className="text-[15px] text-text-muted leading-snug line-clamp-2">
             {item.description}
           </p>
         )}
@@ -87,7 +87,7 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
             {item.tags.map((tag) => (
               <span
                 key={tag}
-                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-full
                            bg-success/10 text-success"
               >
                 {TAG_LABELS[tag] ?? tag}
@@ -97,7 +97,7 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
         )}
 
         <div className="flex items-center justify-between mt-1">
-          <p className="text-base font-bold text-text tabular-nums">{price}</p>
+          <p className="text-lg font-bold text-text tabular-nums">{price}</p>
           <Button
             variant="add"
             size="sm"
@@ -107,7 +107,7 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
             }}
             aria-label={`Add ${item.name} to order`}
           >
-            <Plus size={11} strokeWidth={2.5} />
+            <Plus size={12} strokeWidth={2.5} />
             Add
           </Button>
         </div>

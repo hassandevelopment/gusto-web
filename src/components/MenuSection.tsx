@@ -11,10 +11,12 @@ interface Props {
 
 export default function MenuSection({ category, items, onAdd, onTap, firstSection }: Props) {
   return (
-    <section id={category.id} className="mb-14 scroll-mt-[120px]">
-      <div className="flex items-baseline gap-3 mb-4">
+    <section id={category.id} className="mb-16 scroll-mt-[120px]">
+      {/* Thin rule + heading — makes every new section clearly distinct */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="h-px flex-1 bg-[rgba(104,90,90,0.15)]" />
         <h2
-          className="text-ink"
+          className="text-ink flex-shrink-0"
           style={{
             fontFamily: 'var(--font-italic)',
             fontStyle: 'italic',
@@ -26,6 +28,7 @@ export default function MenuSection({ category, items, onAdd, onTap, firstSectio
         >
           {category.name}
         </h2>
+        <div className="h-px flex-1 bg-[rgba(104,90,90,0.15)]" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

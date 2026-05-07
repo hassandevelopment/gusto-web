@@ -4,7 +4,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: ReactNode
   label: string
   variant?: 'default' | 'ghost' | 'filled'
-  size?: 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md'
 }
 
 const base =
@@ -22,6 +22,7 @@ const variants = {
 const sizes = {
   sm: 'w-9 h-9 min-w-[36px] min-h-[36px]',
   md: 'w-11 h-11 min-w-[44px] min-h-[44px]',
+  xs: 'w-7 h-7 min-w-[28px] min-h-[28px]',
 }
 
 export default function IconButton({

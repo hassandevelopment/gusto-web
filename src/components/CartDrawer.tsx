@@ -283,10 +283,10 @@ export default function CartDrawer({ open, onClose }: Props) {
                 <p className="text-sm text-text-muted/70">Tap any item to add it</p>
               </div>
             ) : (
-              <ul className="divide-y divide-[rgba(104,90,90,0.08)] px-5">
+              <ul className="divide-y divide-[rgba(104,90,90,0.08)] px-4">
                 {cartEntries.map(({ item, entry }) => (
                   <li key={item.id} className="py-4 flex gap-3">
-                    <div className="w-16 h-16 rounded-[8px] overflow-hidden bg-bg flex-shrink-0">
+                    <div className="w-14 h-14 rounded-[8px] overflow-hidden bg-bg flex-shrink-0">
                       <CartThumbnail src={item.image} alt={item.name} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -299,13 +299,14 @@ export default function CartDrawer({ open, onClose }: Props) {
                       {entry.notes && (
                         <p className="text-xs text-text-muted mb-1 line-clamp-1 italic">{entry.notes}</p>
                       )}
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <QuantityStepper
                           value={entry.qty}
                           onChange={(next) => setQty(item.id, next)}
                           min={0}
                           max={20}
                           itemName={item.name}
+                          compact
                         />
                         <p className="text-sm font-bold text-text tabular-nums">
                           {item.price !== null ? `BHD ${(item.price * entry.qty).toFixed(2)}` : '—'}

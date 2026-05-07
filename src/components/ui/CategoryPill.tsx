@@ -16,7 +16,7 @@ export default function CategoryPill({ label, image, active = false, onClick }: 
       type="button"
       onClick={onClick}
       className={
-        'inline-flex items-center gap-2 pl-1 pr-3.5 rounded-2xl border ' +
+        'inline-flex items-center gap-2 pl-1.5 pr-4 rounded-2xl border ' +
         'min-h-[52px] whitespace-nowrap select-none cursor-pointer ' +
         'transition-[background-color,color,border-color,box-shadow] duration-200 ' +
         'active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ' +
@@ -26,7 +26,7 @@ export default function CategoryPill({ label, image, active = false, onClick }: 
       }
     >
       {/* Category thumbnail */}
-      <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0">
+      <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 my-1.5">
         {image && !imgErr ? (
           <img
             src={image}

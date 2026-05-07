@@ -24,15 +24,10 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Auto-open drawer the first time an item is added
+  // Auto-close drawer when cart is cleared
   const prevQty = useRef(totalQty)
   useEffect(() => {
-    if (totalQty === 0) {
-      setDrawerOpen(false)
-      prevQty.current = 0
-      return
-    }
-    if (prevQty.current === 0) setDrawerOpen(true)
+    if (totalQty === 0) setDrawerOpen(false)
     prevQty.current = totalQty
   }, [totalQty])
 

@@ -7,6 +7,7 @@ interface Props {
   min?: number
   max?: number
   itemName?: string
+  compact?: boolean
 }
 
 export default function QuantityStepper({
@@ -15,20 +16,24 @@ export default function QuantityStepper({
   min = 0,
   max = 99,
   itemName = 'item',
+  compact = false,
 }: Props) {
+  const btnSize = compact ? 'xs' : 'sm'
+  const iconSize = compact ? 14 : 16
+
   return (
     <div className="inline-flex items-center gap-1" role="group" aria-label={`Quantity for ${itemName}`}>
       <IconButton
-        icon={<Minus size={16} strokeWidth={2} />}
+        icon={<Minus size={iconSize} strokeWidth={2} />}
         label={`Decrease quantity of ${itemName}`}
         variant="default"
-        size="sm"
+        size={btnSize}
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
       />
 
       <span
-        className="min-w-[32px] text-center text-sm font-semibold text-text tabular-nums select-none"
+        className="min-w-[28px] text-center text-sm font-semibold text-text tabular-nums select-none"
         aria-live="polite"
         aria-atomic="true"
       >
@@ -36,10 +41,10 @@ export default function QuantityStepper({
       </span>
 
       <IconButton
-        icon={<Plus size={16} strokeWidth={2} />}
+        icon={<Plus size={iconSize} strokeWidth={2} />}
         label={`Increase quantity of ${itemName}`}
         variant="default"
-        size="sm"
+        size={btnSize}
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
       />
