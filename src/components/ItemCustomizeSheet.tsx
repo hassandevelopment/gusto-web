@@ -126,6 +126,7 @@ export default function ItemCustomizeSheet({ item, onClose }: Props) {
     inset: 'auto 0 0 0',
     width: '100%',
     maxWidth: '100%',
+    height: '86dvh',     // explicit height — flex-1 children require this on mobile Safari
     maxHeight: '92dvh',
     margin: 0,
     padding: 0,
