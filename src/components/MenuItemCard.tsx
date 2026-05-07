@@ -56,7 +56,7 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
       onClick={() => onTap?.(item)}
     >
       {/* Full-width photo */}
-      <div className="w-full aspect-video bg-bg flex-shrink-0">
+      <div className="w-full aspect-[2/1] bg-bg flex-shrink-0">
         <ItemImage src={item.image} alt={altText} eager={eager} />
       </div>
 
@@ -76,7 +76,7 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
         </p>
 
         {item.description && (
-          <p className="text-xs text-text-muted leading-snug line-clamp-2">
+          <p className="text-sm text-text-muted leading-snug line-clamp-2">
             {item.description}
           </p>
         )}
@@ -96,7 +96,7 @@ export default function MenuItemCard({ item, onAdd, onTap, eager }: Props) {
         )}
 
         <div className="flex items-center justify-between mt-1">
-          <p className="text-sm font-bold text-text tabular-nums">{price}</p>
+          <p className="text-base font-bold text-text tabular-nums">{price}</p>
           <Button
             variant="add"
             size="sm"
