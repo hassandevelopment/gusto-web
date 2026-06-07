@@ -1,206 +1,329 @@
-# CLAUDE.md — Gusto Pizzeria Ristorante Menu
+# CLAUDE.md — Gusto Pizzeria Web (`gusto-web`)
 
-## Skills — Read in This Order, Every Session
+## Repository scope: two surfaces, one repo
 
-**Step 1 — UI/UX Pro Max** (structure & conversion):
-`~/.claude/skills/ui-ux-pro-max/CLAUDE.md`
-Search tool: `python3 ~/.claude/skills/ui-ux-pro-max/src/ui-ux-pro-max/scripts/search.py "<query>" --domain <domain> --stack react`
+This repo hosts two distinct surfaces with different audiences, design rules, and constraints. Keep them clearly separated in code and in your head.
 
-**Step 2 — Taste Skill** (aesthetic refinement):
-`~/.claude/skills/taste-skill.md`
+| Surface | Route(s) | Audience | Form factor | Backend? | Code-split? |
+|---|---|---|---|---|---|
+| **Customer Menu** | `/`, `/menu` | Diners scanning a QR code | Mobile-first | No (static `menu.json`) | Default chunk |
+| **Kitchen Tool** | `/kitchen`, `/kitchen/login` | Restaurant staff | Tablet / desktop | Yes (Supabase auth + Realtime) | Lazy-loaded route |
 
-### How They Work Together
-- UI/UX Pro Max answers: *Does this layout guide the customer toward browsing and ordering?*
-- Taste Skill answers: *Does this feel like a premium Italian restaurant?*
-- When they conflict, trust UI/UX Pro Max for structure, Taste Skill for visual polish.
-- This is a QR-code menu — the primary job is fast browsing and easy "show waiter" flow.
+**Kitchen code must NEVER appear in the customer's initial bundle.** All kitchen routes are imported via `React.lazy`. Verify with bundle analysis on every change that touches the route registry or imports `src/lib/supabase.ts`.
 
-**No frontend code before both skills are read. No exceptions.**
+---
+
+## Companion repo
+
+This repo has a sibling: **`DEV-Gusto-App`** (Expo / React Native, customer mobile app). Both repos share the same Supabase project (`hhykbkdxsiclfjbrklyr`).
+
+The mobile app owns:
+- The Supabase schema (migrations live there, in `supabase/migrations/`, applied via the Supabase MCP per the project's migration-tracking ADR).
+- The canonical order status vocabulary (see `DEV-Gusto-App/CLAUDE.md` §6).
+- Customer-facing order placement — the kitchen tool in this repo is the staff-side receiver, not a duplicate placement surface.
+- The Realtime channel-reuse guard pattern (see `DEV-Gusto-App/docs/decisions.md`) — applies to any Realtime subscription in either repo.
+
+When schema, status, or Realtime questions arise: check `DEV-Gusto-App/CLAUDE.md` and `DEV-Gusto-App/docs/decisions.md` first. Do not invent or substitute.
+
+---
+
+## Skills — When to read them
+
+For **customer menu** work (any frontend change under `/`, `/menu`, or related components):
+
+1. **UI/UX Pro Max** (structure & conversion) — `~/.claude/skills/ui-ux-pro-max/CLAUDE.md`
+   Search: `python3 ~/.claude/skills/ui-ux-pro-max/src/ui-ux-pro-max/scripts/search.py "<query>" --domain <domain> --stack react`
+
+2. **Taste Skill** (aesthetic refinement) — `~/.claude/skills/taste-skill.md`
+
+When they conflict: trust UI/UX Pro Max for structure, Taste Skill for visual polish.
+
+**No customer menu frontend code before both skills are read. No exceptions.**
+
+For **kitchen tool** work: these skills are NOT required. The kitchen tool is an internal staff utility, not a brand surface. Follow the principles in "Kitchen Tool — Design principles" below.
 
 ---
 
 ## Project Summary
 
-A mobile-first digital menu for **Gusto Pizzeria Ristorante**, an Italian wood-fire pizzeria in Janabiyah, Bahrain. Customers scan a QR code at the table, browse the menu, build a list of what they want, and show the screen to the waiter. **No checkout, no payment, no backend.**
+### Customer Menu (the original purpose of this repo)
 
-This is replacing a heavy, laggy third-party menu (orderlina.menu) — performance is the primary reason for the rebuild, not features.
+A mobile-first digital menu for **Gusto Pizzeria Ristorante**, an Italian wood-fire pizzeria in Janabiyah, Bahrain. Customers scan a QR code at the table, browse the menu, build a list, and show the screen to the waiter. **No checkout, no payment, no order submission from this surface** — that's the mobile app's job.
 
-## Performance Budget (NON-NEGOTIABLE)
+The customer menu is intended to eventually replace **Orderlina** (the third-party menu service the restaurant currently pays yearly for).
 
-These are pass/fail criteria, not goals.
+### Kitchen Tool (added 2026-06)
+
+A staff-facing live order board. Orders placed via the **Gusto mobile app** (`DEV-Gusto-App`) arrive in Supabase; the kitchen page subscribes via Realtime and displays them on a tablet in the kitchen. Staff tap status buttons (placed → preparing → ready → ...) which updates the order and triggers a push notification back to the customer's app.
+
+The kitchen page does **not** replace the in-store POS (Omega / Olive). Staff re-key incoming orders into Omega so it prints to the Epson kitchen printer. The kitchen page is the live receipt board, not a POS.
+
+---
+
+## Customer Menu — Performance Budget (NON-NEGOTIABLE)
+
+These pass/fail criteria apply to the **customer menu** surface only. The kitchen surface is exempt; see "Kitchen Tool — Performance" below.
 
 - **First Contentful Paint:** < 1.0s on 4G
 - **Largest Contentful Paint:** < 1.8s on 4G
-- **Total JavaScript (gzipped):** < 80 KB
+- **Customer initial JS bundle (gzipped):** < 80 KB
 - **Lighthouse Performance score:** ≥ 95 mobile
-- **Total page weight (initial load):** < 500 KB
-- All food images: **WebP or AVIF**, lazy-loaded below the fold, with explicit `width`/`height` to prevent CLS
-- No third-party analytics scripts on initial load
-- No web fonts that block render — use `font-display: swap` and prefer system font stack or one self-hosted variable font max
+- **Customer initial page weight:** < 500 KB
+- Food images: WebP/AVIF, lazy-loaded below the fold, explicit `width`/`height`
+- No third-party analytics on initial load
+- No render-blocking web fonts — `font-display: swap`, one self-hosted variable font max
 
-If a feature would push us past these budgets, the feature loses.
+**Kitchen code MUST be code-split out of the customer bundle.** `@supabase/supabase-js` alone is ~73KB gzipped — if it lands in the customer chunk, the budget is blown and the build is broken. Confirm with bundle analysis (`npm run build` + inspect `dist/assets/`) on every change that touches route registration or imports `src/lib/supabase.ts`.
+
+If a customer-menu feature would push past these budgets, the feature loses.
+
+---
+
+## Kitchen Tool — Performance
+
+- Audience: a single staff tablet in the kitchen, on the restaurant's wifi
+- Targets (not pass/fail): kitchen route bundle < 200 KB gzipped, interactive within 2s on a mid-tier tablet
+- The kitchen surface is not perf-critical the way the customer surface is — staff are captive users on a known device, not strangers on flaky mobile data
+
+---
+
+## Kitchen Tool — Auth, data, and Realtime
+
+- **Auth:** Supabase email/password sign-in (`signInWithPassword`). Session persisted via supabase-js default (localStorage).
+- **Staff gate:** `profiles.is_staff = true` enforced (a) client-side after sign-in, (b) server-side via Supabase RLS. Both layers; the RLS is the real security boundary.
+- **Data the kitchen reads:** `orders`, `order_items`, `order_item_addons` — RLS allows staff to SELECT all rows.
+- **Data the kitchen writes:** `orders.status` — RLS allows staff UPDATE on all rows.
+- **Realtime:** Supabase Realtime subscription on `orders` table; status changes propagate to the customer's app via the same channel pattern.
+- **Channel-reuse guard pattern:** every Realtime effect MUST use the `getChannels`-and-reuse pattern (channelRef + reuse-if-exists at the topic), documented in `DEV-Gusto-App/docs/decisions.md`. Do not let CC freelance Realtime subscriptions — Fast Refresh / strict-mode remount will throw "cannot add postgres_changes callbacks after subscribe()" otherwise.
+
+---
+
+## Kitchen Tool — Design principles
+
+The kitchen tool is a utility, not a brand surface. Different rules from the customer menu:
+
+- **Reuse design tokens** from `src/index.css` (`@theme` variables — colors, fonts, shadows, radii). Visual consistency with the rest of the brand.
+- **Density over warmth.** Staff scan many orders fast — pack information, minimize whitespace, no decorative motion.
+- **No food photography** on the kitchen surface. Order cards are text-heavy.
+- **Status changes are loud.** Color and shape both convey state — don't rely on color alone.
+- **Touch-first but not mobile-first.** Tablet is the primary form factor. Buttons must be tappable but layouts can be wider than 360px.
+- **No decorative animations.** Skeleton states yes; transitions only where they aid comprehension (e.g., a card moving between status columns).
+
+---
 
 ## Tech Stack
 
-- **Framework:** Vite + React 18 + TypeScript
-- **Styling:** Tailwind CSS
-- **State:** React Context + localStorage for cart (no Redux/Zustand needed)
-- **Routing:** React Router (only 2–3 routes — could even be a single page with sections)
-- **Icons:** Lucide React
-- **Image optimization:** `vite-plugin-image-optimizer` or pre-optimized assets
-- **Deployment:** Cloudflare Pages (preferred) or Vercel
+Current (verify against `package.json`):
 
-**Do not use:** Next.js, Firebase, any SSR framework, any state management library beyond Context, any UI component library (Tailwind is enough).
+- **Framework:** Vite + React **19** + TypeScript
+- **Styling:** Tailwind v4 (CSS-based `@theme` tokens in `src/index.css`, no `tailwind.config.js`)
+- **Router:** `react-router-dom` v7
+- **Icons:** `lucide-react`
+- **State:** React Context + `localStorage` (customer cart). No Redux/Zustand needed.
+- **Backend client (kitchen only):** `@supabase/supabase-js` v2
+- **Deployment:** GitHub Pages (current) via `.github/workflows/deploy.yml`. Cloudflare Pages was the original intent; that migration may happen alongside a custom-domain move (`gusto.bh` pending confirmation).
+
+**Do not use:** Next.js, Firebase, any SSR framework, any state management library beyond Context, any UI component library (Tailwind is enough), `gh-pages` npm package (the workflow handles deploys natively).
+
+---
 
 ## Project Structure
 
 ```
 /
+├── .github/workflows/
+│   └── deploy.yml              # GH Pages deploy on push to main
 ├── public/
-│   ├── images/
-│   │   ├── pizzas/        # Food photos, WebP, ~600px wide
-│   │   ├── starters/
-│   │   ├── pastas/
-│   │   ├── etc/
-│   │   └── logo.svg       # Gusto logo
-│   └── og-image.jpg       # Social share image
+│   ├── images/                 # Food photos per category (customer)
+│   ├── og-image.jpg
+│   └── ...
 ├── src/
 │   ├── components/
-│   │   ├── Header.tsx           # Logo + cart icon + lang switcher
-│   │   ├── Hero.tsx             # Welcome / restaurant name banner
-│   │   ├── CategoryNav.tsx      # Sticky horizontal scroll of category pills
-│   │   ├── MenuSection.tsx      # Renders one category
-│   │   ├── MenuItemCard.tsx     # Image + name + description + price + add btn
-│   │   ├── ItemDetailModal.tsx  # Quantity + notes + add to cart
-│   │   ├── CartDrawer.tsx       # Slide-up drawer with items + total
-│   │   ├── SearchBar.tsx
-│   │   └── RestaurantInfo.tsx   # Hours, location, contact
+│   │   ├── ui/                 # Reusable primitives (Button, Card, IconButton, QuantityStepper)
+│   │   ├── ProtectedRoute.tsx  # Kitchen auth gate (added Phase 2)
+│   │   └── [customer menu components: Header, Hero, CategoryNav,
+│   │        MenuSection, MenuItemCard, ItemDetailModal, CartDrawer,
+│   │        SearchBar, RestaurantInfo, ErrorBoundary]
 │   ├── contexts/
-│   │   └── CartContext.tsx      # Cart state + localStorage persistence
+│   │   └── CartContext.tsx     # Customer cart — DO NOT import from kitchen code
 │   ├── data/
-│   │   └── menu.ts              # Imports menu.json, types it
+│   │   └── menu.ts             # Imports menu.json, types it
 │   ├── hooks/
-│   │   └── useScrollSpy.ts      # For sticky category nav highlighting
-│   ├── i18n/                    # If Arabic support is added
-│   │   ├── en.json
-│   │   └── ar.json
+│   │   └── useScrollSpy.ts
+│   ├── lib/
+│   │   └── supabase.ts         # Kitchen-only — never import from customer code
+│   ├── pages/
+│   │   ├── HomePage.tsx        # Customer home (route: /)
+│   │   ├── KitchenLogin.tsx    # Kitchen sign-in (route: /kitchen/login)
+│   │   └── KitchenPage.tsx     # Kitchen board (route: /kitchen, protected)
 │   ├── types.ts
-│   ├── App.tsx
-│   └── main.tsx
-├── menu.json                    # ⚠️ THE MENU DATA — see schema below
+│   ├── App.tsx                 # Customer menu (route: /menu) — legacy single-file
+│   ├── main.tsx                # Router setup; basename="/gusto-web"
+│   └── index.css               # Tailwind v4 entry + @theme tokens
+├── menu.json                   # Source of truth for customer menu items
 ├── CLAUDE.md
 ├── package.json
-├── tailwind.config.js
-└── vite.config.ts
+├── vite.config.ts              # base: '/gusto-web/'
+└── tsconfig*.json
 ```
 
-## Design System
+---
 
-Pulled from the restaurant's actual interior + current branding.
+## Customer Menu — Design System
 
-### Colors
+Pulled from the restaurant's actual interior and current branding.
+
+### Colors (from `src/index.css` `@theme`)
 
 ```css
---bg:           #D1D1D1   /* Soft warm grey (matches their current site bg) */
---bg-card:      #FFFFFF
---text:         #685A5A   /* Warm brown-grey, their current text color */
---text-muted:   #9A8E8E
---accent:       #C75D2C   /* Burnt orange — matches the banquette seating */
---accent-dark:  #2D2828   /* Near-black for primary buttons / nav pill active */
---success:      #4A7C59
---border:       rgba(104, 90, 90, 0.12)
+--color-bg:          #FFFFFF
+--color-bg-cream:    #F4EFE7   /* Warm cream — customer surface accent */
+--color-card:        #FFFFFF
+--color-text:        #685A5A   /* Warm brown-grey */
+--color-text-muted:  #9A8E8E
+--color-ink:         #2D2828   /* Near-black */
+--color-accent:      #C75D2C   /* Terracotta — CTAs */
+--color-accent-dark: #2D2828
+--color-success:     #4A7C59
 ```
 
 ### Typography
 
-- **Headings:** A geometric sans-serif. **Manrope** (variable, ~30KB) or system stack `system-ui, -apple-system, "Segoe UI"`. Match the current site's bold sans look.
-- **Body:** Same family, regular weight.
-- **Sizes (mobile-first):**
-  - H1: `clamp(2.5rem, 8vw, 3.5rem)` bold
-  - H2: `clamp(1.75rem, 5vw, 2.25rem)` bold
-  - Body: `1rem` / 1.5 line-height
-  - Small: `0.875rem`
+- `--font-sans`: Manrope (variable) — body
+- `--font-wordmark`: Jost — logo / wordmark
+- `--font-italic`: Cormorant Garamond — italic accents
+- Sizes (mobile-first): H1 `clamp(2.5rem, 8vw, 3.5rem)` bold; H2 `clamp(1.75rem, 5vw, 2.25rem)` bold; body `1rem`/1.5; small `0.875rem`
 
-### Spacing & Radii
+### Spacing & radii
 
 - 4px base unit
-- Card border-radius: `12px`
-- Button border-radius: `9999px` (pill) for primary actions
-- Generous touch targets: minimum **44×44px** for any tappable element
+- `--radius-card: 12px`
+- `--radius-pill: 9999px`
+- Minimum touch target: 44 × 44 px
+- Shadows: `--shadow-card`, `--shadow-card-hover`, `--shadow-pill` (warm-tinted, layered)
 
-## Mobile-First Rules
+---
 
-- All layouts start at 360px viewport. Desktop is a courtesy, not a target.
-- **No hover-only interactions.** Every hover state must have a tap equivalent.
-- Sticky elements: header (logo + cart icon) and category nav. Both must collapse height on scroll-down to give content room.
+## Customer Menu — Mobile-First Rules
+
+- Layouts start at 360px viewport. Desktop is a courtesy, not a target.
+- No hover-only interactions. Every hover state needs a tap equivalent.
+- Sticky elements: header + category nav. Both collapse height on scroll-down.
 - Bottom-of-viewport "View Cart" button when cart has items — thumb-reachable.
-- Horizontal scroll for category nav must have momentum + snap, not free-scroll.
-- Test on actual iPhone Safari and Android Chrome. CSS bugs on iOS Safari are a known hazard (`100vh`, sticky behavior, image rendering).
+- Horizontal scroll for category nav: momentum + snap, not free-scroll.
+- Test on real iPhone Safari and Android Chrome. iOS Safari has known CSS hazards (`100vh`, sticky behavior, image rendering).
 
-## Features
+---
+
+## Customer Menu — Features
 
 ### Required
 
-1. **Hero / welcome screen** with restaurant name and one good interior photo
-2. **Category navigation** — sticky horizontal scrollable pills, active state, scroll-spy linked to sections
-3. **Menu item grid/list** per category — image, name, short description, price, "+ Add" button
-4. **Item detail modal/sheet** — opens on tap; shows large image, full description, quantity stepper, optional notes, "Add to order" CTA
-5. **Cart drawer** — slide up from bottom; lists items with quantity steppers, shows running total, "Show waiter" button (just dismisses or scales up)
-6. **Search bar** — filters across all categories by item name & description
-7. **Persistent cart** — `localStorage` key `gusto_cart`, restored on page load, with timestamp; auto-clear after 4 hours of inactivity
-8. **Restaurant info section** at bottom: hours, address, phone (tap-to-call), Google Maps link, Instagram link
-9. **VAT notice** — "All prices include VAT" displayed near the top of the menu
+1. Hero / welcome with restaurant name and one good interior photo
+2. Category navigation — sticky horizontal pills, active state, scroll-spy
+3. Menu item grid/list per category
+4. Item detail modal/sheet — qty stepper, optional notes, "Add to order"
+5. Cart drawer — slide up from bottom; items, qty steppers, total, "Show waiter"
+6. Search bar — filters across name & description
+7. Persistent cart — `localStorage` key `gusto_cart`, 4-hour inactivity expiry
+8. Restaurant info — hours, address, tap-to-call, Maps link, Instagram
+9. VAT notice — "All prices include VAT" near the top
 
-### Nice-to-have (decide before starting)
+### Nice-to-have (still pending decision)
 
-- Arabic / RTL support (toggle in header). **Decision needed.**
-- "Send order to WhatsApp" button that opens WhatsApp with pre-filled order text to the restaurant's number. **Decision needed.**
-- Dietary filter chips (Vegetarian, Contains seafood, etc.)
-- Item-level allergen tags
+- Arabic / RTL support
+- "Send order to WhatsApp" — probably moot now that the mobile app exists
+- Dietary filter chips
+- Allergen tags
 
-### Explicitly out of scope
+### Explicitly out of scope on the customer menu surface
 
-- User accounts
-- Payment / checkout
-- Real-time order submission to a kitchen system
+- User accounts → handled by the mobile app
+- Payment / checkout → handled by the mobile app
+- Order submission → handled by the mobile app
 - Reviews / ratings
 - Reservations
 
-## Data Schema
+### Explicitly out of scope on the kitchen surface
 
-`menu.json` is the single source of truth. Restaurant updates → edit this file → redeploy.
+- Replacing the in-store POS (Omega handles receipt printing)
+- Customer-facing UI of any kind
+- Menu editing (menu data lives in `menu.json`; staff don't edit from the kitchen)
+
+---
+
+## Customer Menu — Cart Behavior (precise)
+
+- Cart state: `{ items: { [itemId]: { qty: number, notes?: string } }, updatedAt: number }`
+- Persist to `localStorage` on every change, key = `gusto_cart`
+- On load, restore if `updatedAt` is within the last 4 hours; otherwise discard
+- Adding an item that already exists increments quantity by 1; doesn't reopen the modal
+- Cart count badge shows total quantity (sum of qty), not unique item count
+- Total = `sum(items[i].qty * menuPrice(items[i].id))`, formatted `BHD X.XX`
+- If a cart contains an item whose `id` no longer exists in `menu.json`, drop it silently on load
+- Empty drawer: "Your order is empty — tap any item to add it"
+
+---
+
+## Customer Menu — Accessibility
+
+- All interactive elements keyboard-accessible
+- Body text contrast ≥ 4.5:1
+- `alt` text on every food image — name + brief description, not "pizza image"
+- Modal/drawer focus trap; restore focus to trigger on close
+- Quantity steppers: `<button>` with proper `aria-label`s ("Increase quantity of Margherita")
+- Cart count badge: `aria-live="polite"`
+- Respect `prefers-reduced-motion`
+
+---
+
+## Customer Menu — Image Strategy
+
+- Source: Orderlina screenshots (have food photos baked in), Instagram (@gusto_bahrain) with permission, or a new shoot
+- Format: WebP with JPG fallback only if needed
+- Sizes: 600px wide for card thumbs, 1200px for detail view
+- Compression target: ~50 KB per thumb, ~150 KB per detail
+- Loading: `loading="lazy"` below first viewport, `fetchpriority="high"` only on hero
+- Aspect ratio: square (1:1) for grid consistency
+- Path: `/public/images/[category]/[item-id].webp`
+
+---
+
+## Customer Menu — Data Schema
+
+`menu.json` is the single source of truth. Restaurant updates → edit file → redeploy.
 
 ```ts
 type Currency = "BHD";
 
 interface MenuItem {
-  id: string;                    // kebab-case slug of the name, stable across edits, e.g. "margherita"
+  id: string;
   name: string;
   nameAr?: string;
   description: string;
   descriptionAr?: string;
-  price: number | null;          // in BHD, e.g. 5.5. null if extraction was incomplete.
-  image: string;                 // path under /public/images/[category]/[id].webp
-  category: string;              // matches Category.id
+  price: number | null;
+  image: string;
+  category: string;
   tags?: ("vegetarian" | "vegan" | "gluten-free" | "spicy" | "contains-nuts" | "seafood")[];
-  available?: boolean;           // default true; allows toggling without delete
+  available?: boolean;
 }
 
 interface Category {
-  id: string;                    // "pizza", "starters", etc. (kebab-case)
+  id: string;
   name: string;
   nameAr?: string;
-  order: number;                 // display order (1-indexed)
-  icon?: string;                 // optional category thumbnail
+  order: number;
+  icon?: string;
 }
 
 interface MenuData {
-  _extractionIssues?: string[];  // ids of items with incomplete data — see extraction step
+  _extractionIssues?: string[];
   restaurant: {
     name: string;
     address: string;
-    phone: string;               // E.164, e.g. "+97317695556"
-    instagram: string;           // handle
+    phone: string;
+    instagram: string;
     googleMapsUrl: string;
     hours: string;
     vatIncluded: true;
@@ -210,114 +333,46 @@ interface MenuData {
 }
 ```
 
----
+Canonical category order (matches the live Orderlina menu):
 
-## ⚠️ MENU DATA EXTRACTION — DO THIS FIRST, BEFORE ANY CODE
-
-The full menu lives as **PNG screenshots from the previous Orderlina menu**, captured per category. They are stored in `./brand_assets/gusto/`. **Confirm this folder exists before doing anything else.**
-
-Each PNG follows the same Orderlina layout: a category title at the top, then a vertical list of items where each item has a square food photo on the left and the name + description + price stacked on the right. Some category sections span multiple scrolled screenshots, so the same item may appear partially in two files.
-
-Your first job is to extract this into a clean `menu.json`. **Do not scaffold the app, do not write any React components, do not install any dependencies, until the menu data is extracted AND verified by the user.**
-
-### Step 1 — Inventory the source files
-
-Before extracting anything, list every file you find in the menu screenshots folder. For each file, output:
-
-- Filename
-- Which category it appears to show (read the header at the top of the screenshot)
-- How many distinct items are visible on that screenshot
-- Any items where the price or description is cut off / partially visible at the top or bottom edge
-
-Output this as a markdown table in chat. **Stop here and wait for the user to confirm the inventory looks right.** Do not proceed to extraction without confirmation.
-
-### Step 2 — Extract menu data into `menu.json`
-
-Once the inventory is confirmed, read every screenshot and extract every menu item into `menu.json` matching the `MenuData` schema above. Rules:
-
-- **`id`** = kebab-case slug of the English name, e.g. `quattro-formaggi`, `tonno-e-cipolla`. Must be unique across the whole menu.
-- **`category`** = kebab-case slug of the section header, e.g. `traditional-wood-oven-fire-pizza`, `chefs-special`, `pasta-and-co`.
-- **`price`** = number in BHD as a decimal, e.g. `5.5`, `6.82`. If the price is cut off or unclear, set to `null` and add the item's `id` to the top-level `_extractionIssues` array.
-- **`description`** = the description as written on the menu, with sensible casing (sentence case is fine — match the style in the source). Don't paraphrase. If a description is cut off, mark `null` and flag in `_extractionIssues`.
-- **`image`** = `/images/[category]/[id].webp` — the actual image file will be placed there later.
-- **`tags`** = inferred from the description. Examples: pizza with "shrimps" or "tuna" → `seafood`. "Vegetariana" or any pizza without meat/seafood → `vegetarian`. A pasta with cream/butter and no meat → `vegetarian`. Don't guess gluten-free, vegan, or allergen tags — leave those off unless the menu explicitly says so.
-- **Deduplicate.** The same item may appear in two scrolled screenshots — only include it once. Use the more complete version of the description.
-- **Preserve the canonical category order** (see below).
-- **Do not invent missing data.** Any field you can't read with confidence becomes `null` and the item id goes in `_extractionIssues`.
-
-### Canonical category order
-
-This matches the live Orderlina menu order exactly (confirmed from screenshots).
-
-```
-1.  Traditional Wood Oven Fire Pizza   (id: traditional-wood-oven-fire-pizza)
-2.  Starters                           (id: starters)
-3.  Salad                              (id: salad)
-4.  Chef's Special                     (id: chefs-special)
-5.  Drinks                             (id: drinks)
-6.  Chef's Signature Pizza             (id: chefs-signature-pizza)
-7.  Calzone                            (id: calzone)
-8.  Focaccia                           (id: focaccia)
-9.  Pasta & Co                         (id: pasta-and-co)
-10. Side Order                         (id: side-order)
-11. Main Course                        (id: main-course)
-12. Desserts                           (id: desserts)
-13. New Drinks                         (id: new-drinks)
-14. Coffee & Tea                       (id: coffee-and-tea)
-```
-
-### Known-good baseline (use this as a sanity check)
-
-The following pizza items have been verified manually. After your extraction, **compare your output to this baseline.** If any of these prices/names don't match what you extracted, something went wrong — re-read those screenshots before proceeding.
-
-| Name | Price (BHD) | Description |
-|---|---|---|
-| Margherita | 5.50 | Tomato sauce, basil, parmesan & mozzarella |
-| Funghi | 5.72 | Tomato sauce, mushroom, parmesan & mozzarella |
-| Melanzane | 6.05 | Tomato sauce, eggplants, cherry tomato, basil, parmesan & mozzarella |
-| Vegetariana | 6.49 | Tomato sauce, bell peppers, zucchini, eggplant, mushroom, parmesan & mozzarella |
-| Quattro Formaggi | 6.60 | Fontina, ricotta, gorgonzola, parmesan & mozzarella |
-| Pizza Pollo | 6.82 | Tomato sauce, grilled chicken, cherry tomato, onion & mozzarella |
-| Gamberi | 7.15 | Tomato sauce, shrimps, rocket leaves, cherry tomatoes, parmesan & mozzarella |
-| Capricciosa | 6.71 | Tomato sauce, mushroom, salami, artichoke, black olives, eggs, parmesan & mozzarella |
-| Tonno e Cipolla | 6.38 | Tomato sauce, tuna, onion, parmesan & mozzarella |
-
-### Step 3 — Verification table
-
-After producing `menu.json`, output a markdown table in chat showing **every single item** you extracted, with these columns:
-
-`Source File | Category | ID | Name | Description | Price (BHD) | Tags | Issues`
-
-The "Issues" column should flag anything you're not confident about — partial reads, ambiguous prices, items you suspect might be duplicates, descriptions that ran off the screen edge, etc.
-
-Also report at the end of the table:
-
-- Total items extracted
-- Items per category
-- Items in `_extractionIssues`
-- Any baseline pizza items that didn't match
-
-**Stop here and wait for the user to verify the table. Do not start scaffolding the app until they confirm.**
+1. Traditional Wood Oven Fire Pizza (`traditional-wood-oven-fire-pizza`)
+2. Starters (`starters`)
+3. Salad (`salad`)
+4. Chef's Special (`chefs-special`)
+5. Drinks (`drinks`)
+6. Chef's Signature Pizza (`chefs-signature-pizza`)
+7. Calzone (`calzone`)
+8. Focaccia (`focaccia`)
+9. Pasta & Co (`pasta-and-co`)
+10. Side Order (`side-order`)
+11. Main Course (`main-course`)
+12. Desserts (`desserts`)
+13. New Drinks (`new-drinks`)
+14. Coffee & Tea (`coffee-and-tea`)
 
 ---
 
-## Step 4 onwards — Build the app, in stages
+## Kitchen Tool — Data dependencies (read from companion repo)
 
-Only after `menu.json` is verified:
+Backend is the shared Supabase project (`hhykbkdxsiclfjbrklyr`). Schema is owned by `DEV-Gusto-App` migrations. Tables relevant to the kitchen surface:
 
-1. **Scaffold** the Vite + React + TS + Tailwind project per the structure defined above. No features yet — just folders, config, a working dev server, and an `App.tsx` that imports `menu.json` and renders a flat list of category names + item counts as a smoke test. Show the file tree and confirm `npm run dev` works.
-2. **Design system pass**: Tailwind config with the color tokens, font setup, and a small set of low-level primitives (`Button`, `Card`, `IconButton`, `QuantityStepper`). Demo them on a single throwaway page so we can review the look before building real screens.
-3. **Read-only menu views**: `Header`, `Hero`, `CategoryNav` (with scroll-spy), `MenuSection`, `MenuItemCard`. No cart yet. Site should be browseable end-to-end with real menu data.
-4. **Cart**: `CartContext` with localStorage persistence, `ItemDetailModal`, `CartDrawer`, sticky "View cart" button when items exist.
-5. **Search**: `SearchBar` component with client-side filtering across name + description.
-6. **Restaurant info & polish**: `RestaurantInfo` section, empty states, error boundaries, 404 fallback, OG image, favicon.
-7. **Performance pass**: image optimization, bundle analysis, Lighthouse run on a real mobile device, fix anything below the budget.
+- `profiles` — `is_staff` flag gates kitchen access
+- `orders` — read all rows + update `status`
+- `order_items` — read
+- `order_item_addons` — read
+- Address details on `orders` are denormalized at checkout (snapshot fields on the order row)
 
-After each stage, **stop and let the user review.** Don't chain stages without confirmation — small reviews are how we catch problems before they compound.
+**Canonical order status vocabulary** (owned by `DEV-Gusto-App/CLAUDE.md` §6):
+
+- Delivery orders: `placed → preparing → ready → out_for_delivery → completed`
+- Pickup orders: `placed → preparing → ready → completed` (skips `out_for_delivery`)
+- Plus `cancelled` (terminal, any time)
+
+**Do NOT modify the Supabase schema from this repo.** Migrations live in `DEV-Gusto-App/supabase/migrations/` and are applied via the Supabase MCP per the migration-tracking ADR. If the kitchen needs a schema change, it goes in the companion repo's migration history.
 
 ---
 
-## Restaurant Info (from Google listing — verify with owner)
+## Restaurant Info
 
 - **Name:** Gusto Pizzeria Ristorante
 - **Address:** The Park, 571 Rd No 7113, Janabiyah, Bahrain
@@ -327,71 +382,73 @@ After each stage, **stop and let the user review.** Don't chain stages without c
 - **Instagram:** @gusto_bahrain
 - **Talabat:** https://www.talabat.com/bahrain/gusto
 
-## Cart Behavior (precise)
-
-- Cart state is `{ items: { [itemId]: { qty: number, notes?: string } }, updatedAt: number }`
-- Persist to `localStorage` on every change, key = `gusto_cart`
-- On load, restore if `updatedAt` is within last 4 hours; otherwise discard and start empty
-- Adding an item that already exists increments quantity by 1; doesn't open the modal again
-- Cart count badge shows total quantity (sum of qty), not unique item count
-- Total price = `sum(items[i].qty * menuPrice(items[i].id))`, formatted as `BHD X.XX`
-- If a cart contains an item whose `id` no longer exists in `menu.json` (e.g., menu was edited), drop it silently on load
-- Empty cart drawer state: friendly message, e.g. "Your order is empty — tap any item to add it"
-
-## Accessibility
-
-- All interactive elements keyboard-accessible (even though primary UX is touch)
-- Color contrast ≥ 4.5:1 for body text against backgrounds
-- `alt` text on every food image — name + brief description, not just "pizza image"
-- Modal/drawer focus trap when open, focus restored to trigger on close
-- Quantity steppers use `<button>` elements with proper `aria-label`s ("Increase quantity of Margherita")
-- Cart count badge uses `aria-live="polite"` so screen readers announce changes
-- Respect `prefers-reduced-motion` for the cart drawer slide animation
-
-## Image Strategy
-
-- Source: existing Orderlina screenshots have the food photos baked in. Either crop them out of the source PNGs, or pull from the restaurant's Instagram (@gusto_bahrain) with permission. A new photo shoot would be ideal but is not blocking.
-- **Format:** WebP, with JPG fallback only if absolutely needed
-- **Sizes:** 600px wide for card thumbnails, 1200px for detail modal view
-- **Compression target:** ~50KB per thumbnail, ~150KB per detail image
-- **Loading:** `loading="lazy"` for everything below first viewport, `fetchpriority="high"` only on the hero image
-- **Aspect ratio:** square (1:1) for grid consistency
-- **Filename convention:** `[item-id].webp`, e.g. `margherita.webp`, in `/public/images/[category]/`
+---
 
 ## Build & Deploy
 
 ```bash
-# Dev
 npm install
-npm run dev          # http://localhost:5173
-
-# Type check
+npm run dev          # http://localhost:5173/gusto-web/
 npm run typecheck
-
-# Production build
-npm run build        # outputs to /dist
-npm run preview      # local preview of the prod build
-
-# Deploy to Cloudflare Pages
-# Connect repo to Cloudflare Pages, build cmd: `npm run build`, output dir: `dist`
+npm run build        # tsc + vite build + copy index.html → 404.html
+npm run preview      # http://localhost:4173/gusto-web/
 ```
 
-## Open Decisions (resolve before deeper work)
+Deploy: automatic via `.github/workflows/deploy.yml` on push to `main`. GitHub Pages serves at `hassandevelopment.github.io/gusto-web/`.
 
-These need owner answers. Don't guess.
+Future: custom domain `gusto.bh` once ownership is confirmed. When that happens, change `base` in `vite.config.ts` and `basename` in `main.tsx` from `/gusto-web/` back to `/`, and add `public/CNAME` containing the domain.
 
-1. **Arabic support: yes / no?** If yes, add `i18n` setup, RTL Tailwind config, and `nameAr`/`descriptionAr` become required for every item.
-2. **WhatsApp order button: yes / no?** If yes, what's the WhatsApp number, and what message format?
-3. **Domain:** custom domain or `gusto.pages.dev`?
-4. **Photos:** crop from existing screenshots, pull from Instagram, or new shoot?
-5. **Hours:** confirm full weekly schedule.
-6. **Variants:** are there item variants (pizza sizes, pasta sauce options, etc.)? Current data doesn't show any. If yes, schema needs `variants: { name, priceModifier }[]`.
+---
+
+## Cross-repo workflow rules
+
+- **Source-of-truth docs are binding.** Follow the documented task sequence (e.g., the gusto-app roadmap, `decisions.md`) — do not reorder, skip ahead, or substitute a different plan without flagging the deviation and getting approval.
+- **Never invent.** Specs, values, status models, UI layouts — verify against the docs first. If the answer isn't there, stop and ask.
+- **Strict diff-review workflow.** No auto-accept-all on CC diffs. Paste every diff as plain text in a fenced block; vscode-webview links don't reach the human reviewer.
+- **Trunk-based.** Commit directly to `main`. No feature branches.
+- **Conventional commits.** `feat`, `fix`, `chore`, `docs`, `refactor`, etc. Scope where meaningful (`feat(kitchen): ...`).
+- **Plan first.** For any non-trivial change: propose the plan (file list, change summary) and wait for approval before writing code.
+
+---
+
+## Open Decisions (as of 2026-06-07)
+
+### Customer menu
+
+- Arabic / RTL support — pending
+- WhatsApp order button — likely moot (mobile app covers this)
+- Photo source — Instagram crop vs new shoot
+- Full weekly hours — confirm with owner
+- Menu variants (pizza sizes etc.) — current data has none; if added, schema needs `variants: { name, priceModifier }[]`
+
+### Kitchen tool
+
+- Customer name/phone display on the kitchen card: staff-read `profiles` (simpler RLS expansion) vs. denormalize name+phone onto `orders` at checkout (cleaner privacy boundary). DEFERRED to Phase 3 card design.
+- Custom domain timing — pending confirmation on `gusto.bh` ownership.
+- Migration off Lina — the restaurant pays Orderlina yearly. Once the mobile app + this kitchen tool are live and the customer menu is feature-complete enough to replace Lina, reprint QR codes to point at the new domain and cancel the Lina subscription. Not yet scheduled.
+
+### Cross-cutting
+
+- Tap Payments merchant-account paperwork — start during `DEV-Gusto-App` Tasks 14–16 so approval lands before Task 17 (online payments).
+
+---
 
 ## "Done" definition
 
+### Customer menu
+
 - Lighthouse mobile: Performance ≥95, Accessibility ≥95, Best Practices ≥95, SEO ≥95
 - All menu sections populated with real data, `_extractionIssues` empty
-- Tested on real iPhone (Safari) and real Android (Chrome)
+- Tested on real iPhone Safari + Android Chrome
 - Cart flow works end-to-end including persistence and 4-hour expiry
 - Restaurant info, tap-to-call, directions, Instagram links all work
 - Deployed to a stable URL with HTTPS
+
+### Kitchen tool (v1)
+
+- Staff can sign in at `/kitchen/login` using a `profiles.is_staff = true` account
+- `/kitchen` displays incoming orders in real time (Realtime subscription)
+- Staff can advance status through the canonical lifecycle, and the customer app receives a push notification on every status change
+- Audible chime on new order arrival (browser autoplay constraints respected)
+- Sign-out works; the protected route bounces unauthenticated users to login
+- Deployed at the same URL as the customer menu (different route)
