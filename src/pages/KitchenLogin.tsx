@@ -1,12 +1,39 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 export default function KitchenLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    console.log('submit:', { email })
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+      if (authError) {
+        setError(authError.message)
+        setLoading(false)
+        return
+      }
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles').select('is_staff').eq('id', data.user.id).single()
+      if (profileError || profile?.is_staff !== true) {
+        await supabase.auth.signOut()
+        setError('Not authorized — staff access only')
+        setLoading(false)
+        return
+      }
+      navigate('/kitchen')  // success — component unmounts, no setLoading(false) needed
+    } catch (e) {
+      console.error('Sign in failed:', e)
+      setError('Something went wrong. Please try again.')
+      setLoading(false)
+    }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -51,6 +78,7 @@ export default function KitchenLogin() {
               type="email"
               autoComplete="email"
               required
+              disabled={loading}
               value={email}
               onChange={e => setEmail(e.target.value)}
               style={inputStyle}
@@ -64,6 +92,7 @@ export default function KitchenLogin() {
               type="password"
               autoComplete="current-password"
               required
+              disabled={loading}
               value={password}
               onChange={e => setPassword(e.target.value)}
               style={inputStyle}
@@ -72,22 +101,25 @@ export default function KitchenLogin() {
 
           <button
             type="submit"
+            disabled={loading}
             style={{
               width: '100%', padding: '0.75rem',
               borderRadius: 'var(--radius-pill)', border: 'none',
               background: 'var(--color-accent)', color: '#fff',
               fontFamily: 'var(--font-sans)', fontWeight: 600,
-              fontSize: '1rem', cursor: 'pointer', minHeight: '44px',
+              fontSize: '1rem', cursor: loading ? 'default' : 'pointer',
+              minHeight: '44px',
             }}
           >
-            Sign In
+            {loading ? 'Signing in…' : 'Sign In'}
           </button>
 
-          {/* Error message — populated in Phase 2c */}
           <p style={{
             marginTop: '0.75rem', fontSize: '0.875rem',
             color: '#B91C1C', minHeight: '1.25rem',
-          }} />
+          }}>
+            {error ?? ''}
+          </p>
         </form>
       </div>
     </div>

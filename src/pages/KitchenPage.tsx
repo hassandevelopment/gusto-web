@@ -1,14 +1,28 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function KitchenPage() {
   const [email, setEmail] = useState<string | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setEmail(user?.email ?? null)
     })
   }, [])
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    try {
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.error('Sign out failed:', e)
+    } finally {
+      navigate('/kitchen/login')
+    }
+  }
 
   return (
     <div style={{
@@ -19,16 +33,18 @@ export default function KitchenPage() {
       <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Kitchen</h1>
       <p style={{ color: 'var(--color-text-muted)' }}>Signed in as {email ?? '…'}</p>
       <button
-        onClick={() => {}}
+        onClick={handleSignOut}
+        disabled={signingOut}
         style={{
           marginTop: '1rem', padding: '0.625rem 1.5rem',
           borderRadius: 'var(--radius-pill)', border: 'none',
           background: 'var(--color-accent)', color: '#fff',
           fontFamily: 'var(--font-sans)', fontWeight: 600,
-          fontSize: '0.9375rem', cursor: 'pointer', minHeight: '44px',
+          fontSize: '0.9375rem', cursor: signingOut ? 'default' : 'pointer',
+          minHeight: '44px',
         }}
       >
-        Sign Out
+        {signingOut ? 'Signing out…' : 'Sign Out'}
       </button>
     </div>
   )
