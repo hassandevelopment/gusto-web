@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: '/Gusto-Menu/',
+  base: '/gusto-web/',
   plugins: [tailwindcss(), react()],
   resolve: {
     alias: { '@': '/src' },
