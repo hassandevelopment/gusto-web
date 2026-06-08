@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { RefreshCw, Loader2 } from 'lucide-react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { KitchenOrder } from '../types'
+import type { KitchenOrder, OrderStatus } from '../types'
 import KanbanColumn from '../components/kitchen/KanbanColumn'
 
 const COLUMNS: { key: KitchenOrder['status']; title: string; color: string }[] = [
@@ -156,6 +156,31 @@ export default function KitchenPage() {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [fetchOrders])
 
+  async function updateStatus(
+    orderId: string,
+    newStatus: OrderStatus,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const patch =
+      newStatus === 'completed'
+        ? { status: newStatus, completed_at: new Date().toISOString() }
+        : { status: newStatus }
+    try {
+      const { error } = await supabase.from('orders').update(patch).eq('id', orderId)
+      if (error) return { ok: false, error: error.message }
+      // Optimistic local apply — moves/clears the card immediately without waiting for
+      // the realtime echo. The echo is idempotent: same status spread + terminal filter.
+      setOrders((prev) =>
+        prev
+          .map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+          .filter((o) => o.status !== 'completed' && o.status !== 'cancelled'),
+      )
+      return { ok: true }
+    } catch (e) {
+      console.error('Status update failed:', e)
+      return { ok: false, error: 'Something went wrong' }
+    }
+  }
+
   async function handleSignOut() {
     setSigningOut(true)
     try {
@@ -273,6 +298,7 @@ export default function KitchenPage() {
                 headerColor={col.color}
                 orders={orders.filter(o => o.status === col.key)}
                 count={orders.filter(o => o.status === col.key).length}
+                onUpdateStatus={updateStatus}
               />
             ))}
           </div>

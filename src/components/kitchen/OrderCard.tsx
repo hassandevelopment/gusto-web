@@ -1,4 +1,5 @@
-import type { AddressSnapshot, KitchenOrder } from '../../types'
+import { useEffect, useState } from 'react'
+import type { AddressSnapshot, KitchenOrder, OrderStatus } from '../../types'
 
 function formatAge(placedAt: string): string {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(placedAt).getTime()) / 60000))
@@ -19,19 +20,69 @@ function formatAddress(snap: AddressSnapshot): string {
   return parts.join(', ')
 }
 
-interface OrderCardProps {
-  order: KitchenOrder
+function nextAction(
+  status: OrderStatus,
+  orderType: 'delivery' | 'pickup',
+): { label: string; next: OrderStatus } | null {
+  switch (status) {
+    case 'placed':           return { label: 'Start preparing',  next: 'preparing' }
+    case 'preparing':        return { label: 'Mark ready',       next: 'ready' }
+    case 'ready':
+      return orderType === 'delivery'
+        ? { label: 'Out for delivery', next: 'out_for_delivery' }
+        : { label: 'Mark picked up',   next: 'completed' }
+    case 'out_for_delivery': return { label: 'Mark delivered',   next: 'completed' }
+    default:                 return null
+  }
 }
 
-export default function OrderCard({ order }: OrderCardProps) {
-  const { order_number, order_type, status: _status, placed_at, customer,
+interface OrderCardProps {
+  order: KitchenOrder
+  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => Promise<{ ok: boolean; error?: string }>
+}
+
+export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
+  const { order_number, order_type, status, placed_at, customer,
     order_note, items, address_snapshot, total_fils } = order
+
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [cancelConfirm, setCancelConfirm] = useState(false)
+
+  // Reset button state whenever the order moves to a new status
+  useEffect(() => {
+    setPending(false)
+    setCancelConfirm(false)
+    setError(null)
+  }, [status])
 
   const isDelivery = order_type === 'delivery'
   const customerName = customer?.full_name ?? '(Unknown)'
   const customerPhone = customer?.phone ?? null
-
   const totalBhd = (total_fils / 1000).toFixed(3)
+  const action = nextAction(status, order_type)
+
+  async function handleAdvance() {
+    if (!action || pending) return
+    setPending(true)
+    setError(null)
+    const result = await onUpdateStatus(order.id, action.next)
+    if (!result.ok) {
+      setPending(false)
+      setError(result.error ?? 'Update failed')
+    }
+    // On ok: card moves/clears via optimistic update; pending stays true until status effect resets
+  }
+
+  async function handleCancelConfirm() {
+    setPending(true)
+    setError(null)
+    const result = await onUpdateStatus(order.id, 'cancelled')
+    if (!result.ok) {
+      setPending(false)
+      setError(result.error ?? 'Cancel failed')
+    }
+  }
 
   return (
     <div style={{
@@ -151,6 +202,78 @@ export default function OrderCard({ order }: OrderCardProps) {
       }}>
         BHD {totalBhd}
       </p>
+
+      {/* Action row */}
+      <div style={{
+        borderTop: '1px solid rgba(104,90,90,0.08)',
+        marginTop: '0.75rem', paddingTop: '0.75rem',
+        display: 'flex', flexDirection: 'column', gap: '0.5rem',
+      }}>
+        {cancelConfirm ? (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button
+              onClick={handleCancelConfirm}
+              disabled={pending}
+              style={{
+                flex: 1, background: '#DC2626', color: '#fff',
+                border: 'none', borderRadius: 'var(--radius-pill)',
+                padding: '0.625rem 1rem', minHeight: '44px',
+                fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: '0.9375rem',
+                cursor: pending ? 'default' : 'pointer', opacity: pending ? 0.6 : 1,
+              }}
+            >
+              Confirm cancel
+            </button>
+            <button
+              onClick={() => setCancelConfirm(false)}
+              disabled={pending}
+              style={{
+                background: 'transparent', color: 'var(--color-text-muted)',
+                border: '1px solid rgba(104,90,90,0.2)', borderRadius: 'var(--radius-pill)',
+                padding: '0.5rem 1rem', minHeight: '44px',
+                fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.875rem',
+                cursor: pending ? 'default' : 'pointer',
+              }}
+            >
+              Back
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {action && (
+              <button
+                onClick={handleAdvance}
+                disabled={pending}
+                style={{
+                  flex: 1, background: 'var(--color-accent)', color: '#fff',
+                  border: 'none', borderRadius: 'var(--radius-pill)',
+                  padding: '0.625rem 1rem', minHeight: '44px',
+                  fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.9375rem',
+                  cursor: pending ? 'default' : 'pointer', opacity: pending ? 0.6 : 1,
+                }}
+              >
+                {pending ? '…' : action.label}
+              </button>
+            )}
+            <button
+              onClick={() => setCancelConfirm(true)}
+              disabled={pending}
+              style={{
+                background: 'transparent', color: 'var(--color-text-muted)',
+                border: 'none', padding: '0.5rem',
+                fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
+                cursor: pending ? 'default' : 'pointer',
+              }}
+            >
+              Cancel ×
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <p style={{ fontSize: '0.8125rem', color: '#DC2626', margin: 0 }}>{error}</p>
+        )}
+      </div>
     </div>
   )
 }

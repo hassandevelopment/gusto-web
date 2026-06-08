@@ -1,4 +1,4 @@
-import type { KitchenOrder } from '../../types'
+import type { KitchenOrder, OrderStatus } from '../../types'
 import OrderCard from './OrderCard'
 
 interface KanbanColumnProps {
@@ -6,9 +6,10 @@ interface KanbanColumnProps {
   count: number
   headerColor: string
   orders: KitchenOrder[]
+  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => Promise<{ ok: boolean; error?: string }>
 }
 
-export default function KanbanColumn({ title, count, headerColor, orders }: KanbanColumnProps) {
+export default function KanbanColumn({ title, count, headerColor, orders, onUpdateStatus }: KanbanColumnProps) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
@@ -39,7 +40,7 @@ export default function KanbanColumn({ title, count, headerColor, orders }: Kanb
       }}>
         {orders.length === 0
           ? <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center' }}>—</p>
-          : orders.map(order => <OrderCard key={order.id} order={order} />)
+          : orders.map(order => <OrderCard key={order.id} order={order} onUpdateStatus={onUpdateStatus} />)
         }
       </div>
     </div>
