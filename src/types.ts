@@ -43,3 +43,63 @@ export interface MenuData {
   categories: Category[]
   items: MenuItem[]
 }
+
+// ── Kitchen: Supabase-fetched shapes ──────────────────────────────────────
+
+export interface KitchenOrderItemAddon {
+  id: string
+  addon_id: string | null
+  name_snapshot: string
+  price_fils: number
+}
+
+export interface KitchenOrderItem {
+  id: string
+  menu_item_id: string | null
+  name_snapshot: string
+  unit_price_fils: number
+  quantity: number
+  line_note: string | null
+  addons_total_fils: number
+  line_total_fils: number
+  addons: KitchenOrderItemAddon[]
+}
+
+export type OrderStatus =
+  | 'placed'
+  | 'preparing'
+  | 'ready'
+  | 'out_for_delivery'
+  | 'completed'
+  | 'cancelled'
+
+export type OrderType = 'delivery' | 'pickup'
+
+export interface AddressSnapshot {
+  label?: string
+  area?: string
+  road?: string
+  block?: string
+  building?: string
+  apartment?: string
+  notes?: string
+}
+
+export interface KitchenOrder {
+  id: string
+  order_number: number
+  user_id: string
+  order_type: OrderType
+  status: OrderStatus
+  subtotal_fils: number
+  delivery_fee_fils: number
+  total_fils: number
+  address_snapshot: AddressSnapshot | null
+  payment_method: string
+  order_note: string | null
+  placed_at: string
+  updated_at: string
+  completed_at: string | null
+  items: KitchenOrderItem[]
+  customer: { id: string; full_name: string; phone: string } | null
+}
