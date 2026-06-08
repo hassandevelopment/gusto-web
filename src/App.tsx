@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { ShoppingBag, SearchX } from 'lucide-react'
 import { menuData } from './data/menu'
 import type { MenuItem } from './types'
@@ -10,8 +10,8 @@ import SearchBar from './components/SearchBar'
 import CategoryAccordion from './components/CategoryAccordion'
 import MenuItemCard from './components/MenuItemCard'
 import RestaurantInfo from './components/RestaurantInfo'
-import ItemCustomizeSheet from './components/ItemCustomizeSheet'
-import CartDrawer from './components/CartDrawer'
+const ItemCustomizeSheet = lazy(() => import('./components/ItemCustomizeSheet'))
+const CartDrawer = lazy(() => import('./components/CartDrawer'))
 
 export default function App() {
   const { restaurant, categories, items } = menuData
@@ -174,8 +174,10 @@ export default function App() {
         </div>
       )}
 
-      <ItemCustomizeSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
-      <CartDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <Suspense fallback={null}>
+        <ItemCustomizeSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
+        <CartDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      </Suspense>
     </div>
   )
 }
