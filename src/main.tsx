@@ -1,7 +1,6 @@
 import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { CartProvider } from './contexts/CartContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 
@@ -18,7 +17,7 @@ const KitchenLogin = lazy(() => import('./pages/KitchenLogin'))
 /**
  * Router setup:
  *   /               → HomePage
- *   /menu           → App (customer menu), wrapped in CartProvider
+ *   /menu           → App (customer menu)
  *   /kitchen        → KitchenPage, gated by ProtectedRoute
  *   /kitchen/login  → KitchenLogin
  *
@@ -35,14 +34,7 @@ createRoot(document.getElementById('root')!).render(
         <Suspense fallback={<div style={{ padding: '2rem', fontFamily: 'var(--font-sans)' }}>Loading…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route
-              path="/menu"
-              element={
-                <CartProvider>
-                  <App />
-                </CartProvider>
-              }
-            />
+            <Route path="/menu" element={<App />} />
             <Route
               path="/kitchen"
               element={
