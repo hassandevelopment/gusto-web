@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Category, MenuItem } from '../types'
 import CategoryPill from './ui/CategoryPill'
 import { useScrollSpy } from '../hooks/useScrollSpy'
 
+interface NavCategory { id: string; name: string }
+interface NavItem { category: string; image: string }
+
 interface Props {
-  categories: Category[]
-  items: MenuItem[]
+  categories: NavCategory[]
+  items: NavItem[]
   headerHidden: boolean
 }
 

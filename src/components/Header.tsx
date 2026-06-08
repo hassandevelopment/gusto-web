@@ -4,7 +4,7 @@ import IconButton from './ui/IconButton'
 interface Props {
   cartCount: number
   onCartOpen?: () => void
-  onSearchOpen: () => void
+  onSearchOpen?: () => void
   hidden: boolean
 }
 
@@ -46,12 +46,14 @@ export default function Header({ cartCount, onCartOpen, onSearchOpen, hidden }: 
 
         {/* Actions */}
         <div className="flex items-center gap-1.5">
-          <IconButton
-            icon={<Search size={18} strokeWidth={1.75} />}
-            label="Search menu"
-            variant="ghost"
-            onClick={onSearchOpen}
-          />
+          {onSearchOpen && (
+            <IconButton
+              icon={<Search size={18} strokeWidth={1.75} />}
+              label="Search menu"
+              variant="ghost"
+              onClick={onSearchOpen}
+            />
+          )}
 
           {cartCount > 0 && (
             <div className="relative">
