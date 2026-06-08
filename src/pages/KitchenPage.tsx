@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw, Loader2 } from 'lucide-react'
+import { RefreshCw, Loader2, Volume2, VolumeX } from 'lucide-react'
+import { playChime, unlockAudio } from '../lib/chime'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { KitchenOrder, OrderStatus } from '../types'
@@ -21,6 +22,9 @@ export default function KitchenPage() {
   const [orders, setOrders] = useState<KitchenOrder[]>([])
   const [fetchState, setFetchState] = useState<FetchState>('loading')
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const [soundOn, setSoundOn] = useState(true)
+  const soundOnRef = useRef(true)
+  useEffect(() => { soundOnRef.current = soundOn }, [soundOn])
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -108,6 +112,7 @@ export default function KitchenPage() {
           const row = payload.new as { id: string; user_id: string }
           const fullOrder = await fetchOrderDetails(row.id, row.user_id)
           if (!fullOrder) return
+          if (soundOnRef.current) playChime()
           setOrders((prev) => {
             // Idempotent by id: a concurrent manual Refresh may have added it already
             if (prev.some((o) => o.id === fullOrder.id)) return prev
@@ -155,6 +160,13 @@ export default function KitchenPage() {
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [fetchOrders])
+
+  // ── Unlock AudioContext on first staff gesture (autoplay policy) ──────────
+  useEffect(() => {
+    const unlock = () => { unlockAudio(); window.removeEventListener('pointerdown', unlock) }
+    window.addEventListener('pointerdown', unlock)
+    return () => window.removeEventListener('pointerdown', unlock)
+  }, [])
 
   async function updateStatus(
     orderId: string,
@@ -230,6 +242,24 @@ export default function KitchenPage() {
               : <RefreshCw size={15} />
             }
             Refresh
+          </button>
+
+          <button
+            onClick={() => {
+              const next = !soundOn
+              setSoundOn(next)
+              if (next) unlockAudio()
+            }}
+            aria-label={soundOn ? 'Mute new-order sound' : 'Unmute new-order sound'}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(255,255,255,0.12)', color: '#fff',
+              border: 'none', borderRadius: 'var(--radius-pill)',
+              padding: '0.375rem 0.75rem', cursor: 'pointer',
+              minHeight: '36px', minWidth: '36px',
+            }}
+          >
+            {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
 
           {email && (
