@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RefreshCw, Loader2 } from 'lucide-react'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { KitchenOrder } from '../types'
 import KanbanColumn from '../components/kitchen/KanbanColumn'
@@ -19,6 +20,7 @@ export default function KitchenPage() {
   const [signingOut, setSigningOut] = useState(false)
   const [orders, setOrders] = useState<KitchenOrder[]>([])
   const [fetchState, setFetchState] = useState<FetchState>('loading')
+  const channelRef = useRef<RealtimeChannel | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -64,6 +66,95 @@ export default function KitchenPage() {
   }, [])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
+
+  // ── Realtime subscription on orders (ADR-004 channel-reuse guard) ─────────
+  useEffect(() => {
+    const topicName = 'kitchen-orders'
+    const realtimeTopic = `realtime:${topicName}`
+
+    // ADR-004: if a channel for this topic already exists (Fast Refresh / remount
+    // race before removeChannel resolves), reuse it — do NOT re-attach .on().
+    const existing = supabase.getChannels().find((c) => c.topic === realtimeTopic)
+    if (existing) {
+      channelRef.current = existing
+      return
+    }
+
+    // Fetch a single order's full shape (same nested select as fetchOrders),
+    // then merge its customer profile. Returns null on any error.
+    async function fetchOrderDetails(orderId: string, userId: string): Promise<KitchenOrder | null> {
+      const { data: order, error } = await supabase
+        .from('orders')
+        .select('*, items:order_items(*, addons:order_item_addons(*))')
+        .eq('id', orderId)
+        .maybeSingle()
+      if (error || !order) {
+        console.error('Realtime: failed to fetch order details', error)
+        return null
+      }
+      const { data: profile, error: pErr } = await supabase
+        .from('profiles')
+        .select('id, full_name, phone')
+        .eq('id', userId)
+        .maybeSingle()
+      if (pErr) console.error('Realtime: failed to fetch customer profile', pErr)
+      return { ...(order as KitchenOrder), customer: profile ?? null }
+    }
+
+    const channel = supabase
+      .channel(topicName)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },
+        async (payload) => {
+          const row = payload.new as { id: string; user_id: string }
+          const fullOrder = await fetchOrderDetails(row.id, row.user_id)
+          if (!fullOrder) return
+          setOrders((prev) => {
+            // Idempotent by id: a concurrent manual Refresh may have added it already
+            if (prev.some((o) => o.id === fullOrder.id)) return prev
+            return [...prev, fullOrder].sort((a, b) => a.placed_at.localeCompare(b.placed_at))
+          })
+        })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' },
+        (payload) => {
+          const updated = payload.new as Partial<KitchenOrder> & { id: string }
+          // Spread preserves existing items/customer (not present on the raw row);
+          // only orders-table columns (e.g. status) change. Drop terminal statuses.
+          setOrders((prev) =>
+            prev
+              .map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
+              .filter((o) => o.status !== 'completed' && o.status !== 'cancelled'),
+          )
+        })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' },
+        (payload) => {
+          const deletedId = (payload.old as { id?: string }).id
+          if (!deletedId) return
+          setOrders((prev) => prev.filter((o) => o.id !== deletedId))
+        })
+      .subscribe((status) => {
+        console.log(`Realtime [${topicName}]:`, status)
+      })
+
+    channelRef.current = channel
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
+  }, []) // single subscription for the page lifetime
+
+  // ── Resync on tab re-focus: hedge against a silently-dropped WebSocket ────
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        fetchOrders() // full server resync; reconciles any events missed while hidden
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [fetchOrders])
 
   async function handleSignOut() {
     setSigningOut(true)
