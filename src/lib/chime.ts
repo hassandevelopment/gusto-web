@@ -16,26 +16,36 @@ export function unlockAudio(): void {
   if (c && c.state === 'suspended') c.resume().catch(() => {})
 }
 
-// Gentle two-note ping (~600Hz → ~800Hz). No-ops if context unavailable or suspended.
 export function playChime(): void {
   const c = getCtx()
   if (!c || c.state !== 'running') return
-  const now = c.currentTime
-  const notes = [
-    { freq: 600, start: 0,    dur: 0.18 },
-    { freq: 800, start: 0.16, dur: 0.22 },
-  ]
-  for (const n of notes) {
-    const osc = c.createOscillator()
-    const gain = c.createGain()
-    osc.type = 'sine'
-    osc.frequency.value = n.freq
-    const t0 = now + n.start
-    gain.gain.setValueAtTime(0.0001, t0)
-    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02)   // soft attack
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + n.dur) // smooth decay, no click
-    osc.connect(gain).connect(c.destination)
-    osc.start(t0)
-    osc.stop(t0 + n.dur + 0.02)
+
+  // Tunable knobs:
+  const PEAK = 0.45                          // loudness 0..1 (higher = louder)
+  const WAVE: OscillatorType = 'triangle'    // cuts through noise better than sine
+  const CYCLES = 3                            // how many rises (more = more insistent)
+
+  const lo = 880      // A5
+  const hi = 1175     // ~D6
+  const noteDur = 0.13
+  const noteGap = 0.04   // gap between the two notes of one rise
+  const cycleGap = 0.16  // gap between rises
+
+  let t = c.currentTime + 0.01
+  for (let i = 0; i < CYCLES; i++) {
+    for (const freq of [lo, hi]) {
+      const osc = c.createOscillator()
+      const gain = c.createGain()
+      osc.type = WAVE
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0.0001, t)
+      gain.gain.exponentialRampToValueAtTime(PEAK, t + 0.015)     // fast attack
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + noteDur) // decay, no click
+      osc.connect(gain).connect(c.destination)
+      osc.start(t)
+      osc.stop(t + noteDur + 0.02)
+      t += noteDur + noteGap
+    }
+    t += cycleGap
   }
 }
