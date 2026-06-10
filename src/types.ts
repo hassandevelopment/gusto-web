@@ -53,6 +53,15 @@ export interface KitchenOrderItemAddon {
   price_fils: number
 }
 
+export interface KitchenOrderItemVariant {
+  id: string
+  group_slug_snapshot: string
+  option_slug_snapshot: string
+  group_label_snapshot: string
+  option_label_snapshot: string
+  price_delta_fils: number
+}
+
 export interface KitchenOrderItem {
   id: string
   menu_item_id: string | null
@@ -63,6 +72,7 @@ export interface KitchenOrderItem {
   addons_total_fils: number
   line_total_fils: number
   addons: KitchenOrderItemAddon[]
+  variants: KitchenOrderItemVariant[]
 }
 
 export type OrderStatus =

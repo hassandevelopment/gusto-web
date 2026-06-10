@@ -1,5 +1,25 @@
 import { useEffect, useState } from 'react'
-import type { AddressSnapshot, KitchenOrder, OrderStatus } from '../../types'
+import type { AddressSnapshot, KitchenOrder, KitchenOrderItemVariant, OrderStatus } from '../../types'
+
+// Cooking-relevant phrasing for a variant choice. Returns null to hide a row.
+// Mirrors the customer cart label rules for consistency: defaults are silent,
+// the 'spicy' parent toggle is implicit in the spice-level row beneath it.
+function variantDisplay(v: KitchenOrderItemVariant): string | null {
+  switch (v.group_slug_snapshot) {
+    case 'crust':
+      // 'regular' = standard (hidden); 'thin' → "Thin Crust"
+      return v.option_slug_snapshot === 'regular' ? null : `${v.option_label_snapshot} Crust`
+    case 'diavola_spicy':
+      // 'not_spicy' default + 'spicy' parent both hidden (spice-level row conveys it)
+      return null
+    case 'diavola_spice_level':
+      // "Mild Spice" / "Regular Spice" / "Extra Spice"
+      return `${v.option_label_snapshot} Spice`
+    default:
+      // Future variant groups Robel hasn't seen — degrade gracefully.
+      return `${v.group_label_snapshot}: ${v.option_label_snapshot}`
+  }
+}
 
 function formatAge(placedAt: string): string {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(placedAt).getTime()) / 60000))
@@ -151,6 +171,17 @@ export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
             <p style={{ fontSize: '0.9375rem', color: 'var(--color-ink)', margin: 0 }}>
               {item.quantity} × {item.name_snapshot}
             </p>
+            {item.variants
+              .map(v => ({ id: v.id, label: variantDisplay(v) }))
+              .filter((v): v is { id: string; label: string } => v.label !== null)
+              .map(v => (
+                <p key={v.id} style={{
+                  fontSize: '0.875rem', color: 'var(--color-ink)',
+                  fontWeight: 600, paddingLeft: '1rem', margin: 0,
+                }}>
+                  {v.label}
+                </p>
+              ))}
             {item.addons.map(addon => (
               <p key={addon.id} style={{
                 fontSize: '0.875rem', color: 'var(--color-text-muted)',

@@ -38,7 +38,7 @@ export default function KitchenPage() {
 
     const { data: rawOrders, error } = await supabase
       .from('orders')
-      .select('*, items:order_items(*, addons:order_item_addons(*))')
+      .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
       .not('status', 'in', '(completed,cancelled)')
       .order('placed_at', { ascending: true })
 
@@ -89,7 +89,7 @@ export default function KitchenPage() {
     async function fetchOrderDetails(orderId: string, userId: string): Promise<KitchenOrder | null> {
       const { data: order, error } = await supabase
         .from('orders')
-        .select('*, items:order_items(*, addons:order_item_addons(*))')
+        .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
         .eq('id', orderId)
         .maybeSingle()
       if (error || !order) {
