@@ -31,12 +31,12 @@ function formatAge(placedAt: string): string {
 
 function formatAddress(snap: AddressSnapshot): string {
   const parts: string[] = []
-  if (snap.label) parts.push(snap.label + ':')
+  if (snap.label) parts.push(snap.label)
+  if (snap.area) parts.push(snap.area)
   if (snap.block) parts.push(`Block ${snap.block}`)
   if (snap.road) parts.push(`Road ${snap.road}`)
   if (snap.building) parts.push(`Bldg ${snap.building}`)
   if (snap.apartment) parts.push(`Apt ${snap.apartment}`)
-  if (snap.area) parts.push(snap.area)
   return parts.join(', ')
 }
 
@@ -213,9 +213,9 @@ export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
             ? (
               <>
                 <p style={{ margin: 0 }}>{formatAddress(address_snapshot)}</p>
-                {address_snapshot.notes && (
+                {address_snapshot.additional_notes && (
                   <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>
-                    (note: {address_snapshot.notes})
+                    (note: {address_snapshot.additional_notes})
                   </p>
                 )}
               </>

@@ -88,11 +88,11 @@ export type OrderType = 'delivery' | 'pickup'
 export interface AddressSnapshot {
   label?: string
   area?: string
-  road?: string
   block?: string
+  road?: string
   building?: string
   apartment?: string
-  notes?: string
+  additional_notes?: string
 }
 
 export interface KitchenOrder {
