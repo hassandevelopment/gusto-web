@@ -107,6 +107,7 @@ export interface KitchenOrder {
   address_snapshot: AddressSnapshot | null
   payment_method: string
   order_note: string | null
+  scheduled_for: string | null
   placed_at: string
   updated_at: string
   completed_at: string | null

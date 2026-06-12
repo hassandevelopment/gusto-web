@@ -29,6 +29,35 @@ function formatAge(placedAt: string): string {
   return m === 0 ? `${h}h ago` : `${h}h ${m}m ago`
 }
 
+// Scheduled fulfillment time for the PREPARE BY banner (ADR-012). Always Asia/Bahrain —
+// never the kitchen device's timezone. Appends the date only when the scheduled Bahrain
+// day differs from today's (e.g. viewing an older order): "11:15 PM · Jun 12".
+const BAHRAIN_TZ = 'Asia/Bahrain'
+const BAHRAIN_TIME_FMT = new Intl.DateTimeFormat('en-US', {
+  timeZone: BAHRAIN_TZ,
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+})
+const BAHRAIN_DAY_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BAHRAIN_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}) // en-CA → "YYYY-MM-DD", safe to string-compare
+const BAHRAIN_DATE_FMT = new Intl.DateTimeFormat('en-US', {
+  timeZone: BAHRAIN_TZ,
+  month: 'short',
+  day: 'numeric',
+})
+
+function formatPrepareBy(scheduledFor: string): string {
+  const when = new Date(scheduledFor)
+  const time = BAHRAIN_TIME_FMT.format(when)
+  const sameDay = BAHRAIN_DAY_FMT.format(when) === BAHRAIN_DAY_FMT.format(new Date())
+  return sameDay ? time : `${time} · ${BAHRAIN_DATE_FMT.format(when)}`
+}
+
 function formatAddress(snap: AddressSnapshot): string {
   const parts: string[] = []
   if (snap.label) parts.push(snap.label)
@@ -63,7 +92,7 @@ interface OrderCardProps {
 
 export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
   const { order_number, order_type, status, placed_at, customer,
-    order_note, items, address_snapshot, total_fils } = order
+    order_note, items, address_snapshot, total_fils, scheduled_for } = order
 
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -129,6 +158,25 @@ export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
           {isDelivery ? 'DELIVERY' : 'PICKUP'}
         </span>
       </div>
+
+      {/* PREPARE BY banner (ADR-012) — scheduled orders only. The loudest line on the
+          card: full-width ink strip, large bold amber text, so staff can't miss it. */}
+      {scheduled_for && (
+        <div style={{
+          background: 'var(--color-ink)',
+          color: '#FBBF24',
+          borderRadius: 'var(--radius-card)',
+          padding: '0.5rem 0.75rem',
+          margin: '0.5rem 0 0',
+          fontSize: '1.25rem',
+          fontWeight: 800,
+          letterSpacing: '0.02em',
+          textAlign: 'center',
+          lineHeight: 1.15,
+        }}>
+          PREPARE BY {formatPrepareBy(scheduled_for)}
+        </div>
+      )}
 
       {/* Row 2: time */}
       <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '0.25rem 0' }}>
