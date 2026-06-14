@@ -6,6 +6,13 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { KitchenOrder, OrderStatus } from '../types'
 import KanbanColumn from '../components/kitchen/KanbanColumn'
+import OrderCard from '../components/kitchen/OrderCard'
+
+// Returns the start of today (midnight) in Asia/Bahrain as a UTC ISO string.
+function bahrainTodayStart(): string {
+  const bahrainDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bahrain' }).format(new Date())
+  return new Date(`${bahrainDate}T00:00:00+03:00`).toISOString()
+}
 
 const COLUMNS: { key: KitchenOrder['status']; title: string; color: string }[] = [
   { key: 'placed',           title: 'New',              color: 'var(--color-accent)' },
@@ -21,6 +28,9 @@ export default function KitchenPage() {
   const [signingOut, setSigningOut] = useState(false)
   const [orders, setOrders] = useState<KitchenOrder[]>([])
   const [fetchState, setFetchState] = useState<FetchState>('loading')
+  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active')
+  const [historyOrders, setHistoryOrders] = useState<KitchenOrder[]>([])
+  const [historyFetchState, setHistoryFetchState] = useState<FetchState>('idle')
   const channelRef = useRef<RealtimeChannel | null>(null)
   const [soundOn, setSoundOn] = useState(true)
   const soundOnRef = useRef(true)
@@ -33,7 +43,7 @@ export default function KitchenPage() {
     })
   }, [])
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (opts?: { alertOnPlaced?: boolean }) => {
     setFetchState('loading')
 
     const { data: rawOrders, error } = await supabase
@@ -67,9 +77,48 @@ export default function KitchenPage() {
 
     setOrders(merged)
     setFetchState('idle')
+
+    // On page load / manual Refresh: alert staff if unacknowledged 'placed' orders exist.
+    if (opts?.alertOnPlaced && soundOnRef.current && merged.some(o => o.status === 'placed')) {
+      playChime()
+    }
   }, [])
 
-  useEffect(() => { fetchOrders() }, [fetchOrders])
+  useEffect(() => { fetchOrders({ alertOnPlaced: true }) }, [fetchOrders])
+
+  const fetchHistory = useCallback(async () => {
+    setHistoryFetchState('loading')
+    const todayStart = bahrainTodayStart()
+
+    const { data: rawOrders, error } = await supabase
+      .from('orders')
+      .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
+      .in('status', ['completed', 'cancelled'])
+      .gte('placed_at', todayStart)
+      .order('placed_at', { ascending: false })
+
+    if (error) {
+      console.error('Failed to fetch history:', error)
+      setHistoryFetchState('error')
+      return
+    }
+
+    const userIds = [...new Set((rawOrders ?? []).map((o: { user_id: string }) => o.user_id))]
+    const { data: profiles, error: pErr } = userIds.length
+      ? await supabase.from('profiles').select('id, full_name, phone').in('id', userIds)
+      : { data: [], error: null }
+
+    if (pErr) console.error('Failed to fetch history profiles:', pErr)
+
+    const profileMap = new Map((profiles ?? []).map((p: { id: string; full_name: string; phone: string }) => [p.id, p]))
+    const merged: KitchenOrder[] = (rawOrders ?? []).map((o: KitchenOrder) => ({
+      ...o,
+      customer: profileMap.get(o.user_id) ?? null,
+    }))
+
+    setHistoryOrders(merged)
+    setHistoryFetchState('idle')
+  }, [])
 
   // ── Realtime subscription on orders (ADR-004 channel-reuse guard) ─────────
   useEffect(() => {
@@ -225,7 +274,7 @@ export default function KitchenPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button
-            onClick={fetchOrders}
+            onClick={() => fetchOrders({ alertOnPlaced: true })}
             disabled={fetchState === 'loading'}
             aria-label="Refresh orders"
             style={{
@@ -286,57 +335,157 @@ export default function KitchenPage() {
       </header>
 
       {/* Body */}
-      <main style={{ flex: 1, padding: '1rem', overflow: 'hidden' }}>
-        {fetchState === 'loading' && orders.length === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '0.5rem', color: 'var(--color-text-muted)' }}>
-            <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-            <span>Loading orders…</span>
-          </div>
-        ) : fetchState === 'error' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem', color: 'var(--color-text-muted)' }}>
-            <p>Couldn't load orders — retry</p>
+      <main style={{ flex: 1, padding: '1rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+        {/* Tab bar */}
+        <div style={{
+          display: 'flex', gap: 0,
+          borderBottom: '2px solid rgba(255,255,255,0.1)',
+          marginBottom: '1rem', flexShrink: 0,
+        }}>
+          {(['active', 'history'] as const).map(tab => (
             <button
-              onClick={fetchOrders}
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab)
+                if (tab === 'history' && historyFetchState === 'idle' && historyOrders.length === 0) {
+                  fetchHistory()
+                }
+              }}
               style={{
-                background: 'var(--color-accent)', color: '#fff',
-                border: 'none', borderRadius: 'var(--radius-pill)',
-                padding: '0.625rem 1.5rem', cursor: 'pointer',
-                fontFamily: 'var(--font-sans)', fontWeight: 600,
-                fontSize: '0.9375rem', minHeight: '44px',
+                background: 'transparent',
+                color: activeTab === tab ? '#fff' : 'rgba(255,255,255,0.45)',
+                border: 'none',
+                borderBottom: activeTab === tab ? '2px solid var(--color-accent)' : '2px solid transparent',
+                marginBottom: '-2px',
+                padding: '0.5rem 1.25rem',
+                fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: '0.9375rem',
+                cursor: 'pointer', letterSpacing: '0.02em',
+                textTransform: 'capitalize',
               }}
             >
-              Retry
+              {tab === 'active' ? 'Active' : 'History'}
+              {tab === 'active' && activeOrders.length > 0 && (
+                <span style={{
+                  marginLeft: '0.4rem',
+                  background: 'var(--color-accent)', color: '#fff',
+                  borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
+                  padding: '0.1rem 0.45rem',
+                }}>{activeOrders.length}</span>
+              )}
             </button>
-          </div>
-        ) : activeOrders.length === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--color-text-muted)' }}>
-            No active orders
-          </div>
-        ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '1rem',
-            height: '100%',
-          }}
-          className="kitchen-kanban"
-          >
-            {COLUMNS.map(col => (
-              <KanbanColumn
-                key={col.key}
-                title={col.title}
-                headerColor={col.color}
-                orders={orders.filter(o => o.status === col.key)}
-                count={orders.filter(o => o.status === col.key).length}
-                onUpdateStatus={updateStatus}
-              />
-            ))}
-          </div>
+          ))}
+        </div>
+
+        {/* Active tab content */}
+        {activeTab === 'active' && (
+          fetchState === 'loading' && orders.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '0.5rem', color: 'var(--color-text-muted)' }}>
+              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+              <span>Loading orders…</span>
+            </div>
+          ) : fetchState === 'error' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem', color: 'var(--color-text-muted)' }}>
+              <p>Couldn't load orders — retry</p>
+              <button
+                onClick={() => fetchOrders({ alertOnPlaced: true })}
+                style={{
+                  background: 'var(--color-accent)', color: '#fff',
+                  border: 'none', borderRadius: 'var(--radius-pill)',
+                  padding: '0.625rem 1.5rem', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)', fontWeight: 600,
+                  fontSize: '0.9375rem', minHeight: '44px',
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : activeOrders.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--color-text-muted)' }}>
+              No active orders
+            </div>
+          ) : (
+            <div
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', flex: 1, overflow: 'hidden' }}
+              className="kitchen-kanban"
+            >
+              {COLUMNS.map(col => (
+                <KanbanColumn
+                  key={col.key}
+                  title={col.title}
+                  headerColor={col.color}
+                  orders={orders.filter(o => o.status === col.key)}
+                  count={orders.filter(o => o.status === col.key).length}
+                  onUpdateStatus={updateStatus}
+                />
+              ))}
+            </div>
+          )
+        )}
+
+        {/* History tab content */}
+        {activeTab === 'history' && (
+          historyFetchState === 'loading' ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '0.5rem', color: 'var(--color-text-muted)' }}>
+              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+              <span>Loading history…</span>
+            </div>
+          ) : historyFetchState === 'error' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem', color: 'var(--color-text-muted)' }}>
+              <p>Couldn't load history — retry</p>
+              <button
+                onClick={fetchHistory}
+                style={{
+                  background: 'var(--color-accent)', color: '#fff',
+                  border: 'none', borderRadius: 'var(--radius-pill)',
+                  padding: '0.625rem 1.5rem', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)', fontWeight: 600,
+                  fontSize: '0.9375rem', minHeight: '44px',
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : historyOrders.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--color-text-muted)' }}>
+              No completed or cancelled orders today
+            </div>
+          ) : (
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+                <button
+                  onClick={fetchHistory}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.375rem',
+                    background: 'rgba(255,255,255,0.12)', color: '#fff',
+                    border: 'none', borderRadius: 'var(--radius-pill)',
+                    padding: '0.375rem 0.875rem', cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.875rem',
+                    minHeight: '36px',
+                  }}
+                >
+                  <RefreshCw size={14} /> Refresh
+                </button>
+              </div>
+              <div style={{ columns: 'auto 320px', gap: '1rem' }}>
+                {historyOrders.map(order => (
+                  <div key={order.id} style={{ breakInside: 'avoid', marginBottom: '1rem', opacity: order.status === 'cancelled' ? 0.6 : 1 }}>
+                    <OrderCard
+                      order={order}
+                      onUpdateStatus={async () => ({ ok: true })}
+                      readOnly
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
         )}
       </main>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes scheduledPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @media (max-width: 1199px) {
           .kitchen-kanban {
             display: flex !important;

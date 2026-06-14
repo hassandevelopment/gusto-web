@@ -88,9 +88,10 @@ function nextAction(
 interface OrderCardProps {
   order: KitchenOrder
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => Promise<{ ok: boolean; error?: string }>
+  readOnly?: boolean
 }
 
-export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
+export default function OrderCard({ order, onUpdateStatus, readOnly = false }: OrderCardProps) {
   const { order_number, order_type, status, placed_at, customer,
     order_note, items, address_snapshot, total_fils, scheduled_for } = order
 
@@ -159,8 +160,11 @@ export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
         </span>
       </div>
 
-      {/* PREPARE BY banner (ADR-012) — scheduled orders only. The loudest line on the
-          card: full-width ink strip, large bold amber text, so staff can't miss it. */}
+      {/* PREPARE BY / READY BY banner (ADR-012) — scheduled orders only. The loudest line on the
+          card: full-width ink strip, large bold amber text, so staff can't miss it.
+          Delivery says "READY BY" (food must be ready for driver pickup by this time).
+          Pickup says "PREPARE BY" (customer arrives at this time).
+          Pulses at 1.5s to grab attention without being seizure-inducing. */}
       {scheduled_for && (
         <div style={{
           background: 'var(--color-ink)',
@@ -173,8 +177,9 @@ export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
           letterSpacing: '0.02em',
           textAlign: 'center',
           lineHeight: 1.15,
+          animation: 'scheduledPulse 1.5s ease-in-out infinite',
         }}>
-          PREPARE BY {formatPrepareBy(scheduled_for)}
+          {order_type === 'delivery' ? 'READY BY' : 'PREPARE BY'} {formatPrepareBy(scheduled_for)}
         </div>
       )}
 
@@ -282,8 +287,8 @@ export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
         BHD {totalBhd}
       </p>
 
-      {/* Action row */}
-      <div style={{
+      {/* Action row — hidden on read-only history cards */}
+      {!readOnly && <div style={{
         borderTop: '1px solid rgba(104,90,90,0.08)',
         marginTop: '0.75rem', paddingTop: '0.75rem',
         display: 'flex', flexDirection: 'column', gap: '0.5rem',
@@ -352,7 +357,7 @@ export default function OrderCard({ order, onUpdateStatus }: OrderCardProps) {
         {error && (
           <p style={{ fontSize: '0.8125rem', color: '#DC2626', margin: 0 }}>{error}</p>
         )}
-      </div>
+      </div>}
     </div>
   )
 }
