@@ -219,10 +219,21 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }: O
 
       {/* Items list */}
       <div style={{ borderTop: '1px solid rgba(104,90,90,0.08)', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
-        {items.map(item => (
+        {items.map(item => {
+          // Redeemed loyalty rewards (ADR-013) — comped, price 0. Flag for staff.
+          const isReward = item.line_note === 'REWARD'
+          return (
           <div key={item.id} style={{ marginBottom: '0.375rem' }}>
             <p style={{ fontSize: '0.9375rem', color: 'var(--color-ink)', margin: 0 }}>
-              {item.quantity} × {item.name_snapshot}
+              {isReward ? (
+                <>
+                  <span style={{ color: '#FBBF24', fontWeight: 700 }}>REWARD</span>
+                  {' · '}
+                  {item.name_snapshot}
+                </>
+              ) : (
+                <>{item.quantity} × {item.name_snapshot}</>
+              )}
             </p>
             {item.variants
               .map(v => ({ id: v.id, label: variantDisplay(v) }))
@@ -243,7 +254,7 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }: O
                 + {addon.name_snapshot}
               </p>
             ))}
-            {item.line_note && (
+            {item.line_note && !isReward && (
               <p style={{
                 fontSize: '0.875rem', color: 'var(--color-text-muted)',
                 fontStyle: 'italic', paddingLeft: '1rem', margin: 0,
@@ -252,7 +263,8 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }: O
               </p>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Address (delivery only) */}
