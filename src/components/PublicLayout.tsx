@@ -13,19 +13,19 @@ const NAV_LINKS = [
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Plain block (NOT flex): a `position: sticky` element that is a direct child of a
-  // flex container is not reliably pinned by iOS Safari. Keeping this a normal
-  // block-flow container lets the document scroll and the sticky header stay glued
-  // across all browsers. No ancestor sets overflow.
   return (
     <div style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)' }}>
-      {/* Sticky top bar: solid background so content scrolls beneath, never above it. */}
+      {/* Fixed top bar: position:fixed is immune to scroll-context / overflow / flex
+          edge cases that broke position:sticky on iOS Safari. `main` gets matching
+          top padding (57px) so content starts below it. */}
       <header style={{
         borderBottom: '1px solid rgba(104,90,90,0.1)',
         boxShadow: '0 1px 3px rgba(104,90,90,0.08)',
         backgroundColor: 'var(--color-bg)',
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
+        left: 0,
+        right: 0,
         zIndex: 100,
       }}>
         <div style={{
@@ -133,7 +133,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         )}
       </header>
 
-      <main>
+      {/* Spacer offsets the fixed header (56px inner + 1px border = 57px). */}
+      <main style={{ paddingTop: 57 }}>
         {children}
       </main>
 

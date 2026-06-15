@@ -81,7 +81,9 @@ export default function PublicMenuPage() {
 
   return (
     <PublicLayout>
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '3rem 1.5rem 4rem' }}>
+      {/* paddingTop clears the fixed category pill bar (~61px) that sits below the
+          fixed header; the header itself is already offset by <main>'s paddingTop. */}
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '76px 1.5rem 4rem' }}>
         <div style={{ marginBottom: '2.5rem' }}>
           <h1 style={{
             fontFamily: 'var(--font-italic)',
@@ -99,27 +101,25 @@ export default function PublicMenuPage() {
           </p>
         </div>
 
-        {/* ── Sticky category pill nav ──────────────────────────────── */}
+        {/* ── Fixed category pill bar (menu page only) ──────────────────
+            Fixed directly below the fixed PublicLayout header (57px). Immune to
+            the scroll-context / overflow / flex issues that broke sticky on iOS.
+            The container's paddingTop offsets these so items aren't hidden. */}
         {!loading && !error && sections.length > 0 && (
           <div
             ref={navRef}
             role="navigation"
             aria-label="Menu categories"
             style={{
-              // Sticks directly below the PublicLayout header (57px). z below the
-              // header (100) but above scrolling content.
-              position: 'sticky',
+              position: 'fixed',
               top: 57,
+              left: 0,
+              right: 0,
               zIndex: 99,
               display: 'flex',
               gap: '0.5rem',
               overflowX: 'auto',
-              // Full-bleed: break out of the container's 1.5rem side padding so the
-              // bar spans edge-to-edge and fully masks items scrolling underneath.
-              marginLeft: '-1.5rem',
-              marginRight: '-1.5rem',
               padding: '0.75rem 1.5rem',
-              marginBottom: '1.5rem',
               backgroundColor: 'var(--color-bg)',
               borderBottom: '1px solid rgba(104,90,90,0.12)',
               boxShadow: '0 4px 8px -4px rgba(104,90,90,0.18)',
