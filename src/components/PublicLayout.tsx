@@ -15,11 +15,19 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)' }}>
+      {/*
+       * Fixed (not sticky): iOS Safari does not reliably keep a `position: sticky`
+       * element pinned when it's a flex child or during momentum scrolling — the
+       * header would detach and menu items showed above it. `fixed` is rock-solid.
+       * `main` gets matching top padding so content starts below the header.
+       */}
       <header style={{
         borderBottom: '1px solid rgba(104,90,90,0.1)',
         backgroundColor: 'var(--color-bg)',
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
+        left: 0,
+        right: 0,
         zIndex: 50,
       }}>
         <div style={{
@@ -127,7 +135,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         )}
       </header>
 
-      <main style={{ flex: 1 }}>
+      {/* Spacer offsets the fixed header (56px inner + 1px border = 57px). */}
+      <main style={{ flex: 1, paddingTop: 57 }}>
         {children}
       </main>
 

@@ -5,8 +5,8 @@ import { useScrollSpy } from '../hooks/useScrollSpy'
 import { fetchMenu, menuImageUrl } from '../data/menu-api'
 import type { MenuItem, MenuSection } from '../data/menu-api'
 
-// Sticky header (56px) + this nav (~52px); anchor scroll lands below both.
-const NAV_OFFSET = 116
+// Fixed header (57px) + this pill bar (~61px); anchor scroll lands below both.
+const NAV_OFFSET = 118
 
 // Square thumbnail with placeholder/onError fallback (mirrors the menu card pattern).
 function ItemThumb({ item }: { item: MenuItem }) {
@@ -107,7 +107,7 @@ export default function PublicMenuPage() {
             aria-label="Menu categories"
             style={{
               position: 'sticky',
-              top: 55,
+              top: 56,
               zIndex: 45,
               display: 'flex',
               gap: '0.5rem',
