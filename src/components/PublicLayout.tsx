@@ -133,8 +133,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         )}
       </header>
 
-      {/* Spacer offsets the fixed header (56px inner + 1px border = 57px). */}
-      <main style={{ paddingTop: 57 }}>
+      {/* Spacer offsets the fixed header (56px inner + 1px border = 57px).
+          position:relative + z-index:1 puts ALL page content in a stacking context
+          below the fixed bars (nav z100, pills z99), so cards (and their box-shadows /
+          stacking contexts) can never paint over them — an iOS Safari fixed-layer fix. */}
+      <main style={{ paddingTop: 57, position: 'relative', zIndex: 1 }}>
         {children}
       </main>
 
