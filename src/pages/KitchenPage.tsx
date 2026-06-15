@@ -224,7 +224,9 @@ export default function KitchenPage() {
     const patch =
       newStatus === 'completed'
         ? { status: newStatus, completed_at: new Date().toISOString() }
-        : { status: newStatus }
+        : newStatus === 'cancelled'
+          ? { status: newStatus, cancelled_by: 'staff' }
+          : { status: newStatus }
     try {
       const { error } = await supabase.from('orders').update(patch).eq('id', orderId)
       if (error) return { ok: false, error: error.message }

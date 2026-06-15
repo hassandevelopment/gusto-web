@@ -93,7 +93,7 @@ interface OrderCardProps {
 
 export default function OrderCard({ order, onUpdateStatus, readOnly = false }: OrderCardProps) {
   const { order_number, order_type, status, placed_at, customer,
-    order_note, items, address_snapshot, total_fils, scheduled_for } = order
+    order_note, items, address_snapshot, total_fils, scheduled_for, cancelled_by } = order
 
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -159,6 +159,14 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }: O
           {isDelivery ? 'DELIVERY' : 'PICKUP'}
         </span>
       </div>
+
+      {/* Customer-cancelled marker (History tab) — amber, matching the REWARD marker.
+          Staff-cancelled orders show nothing extra (staff knows they did it). */}
+      {status === 'cancelled' && cancelled_by === 'customer' && (
+        <p style={{ color: '#FBBF24', fontWeight: 700, fontSize: '0.875rem', margin: '0.375rem 0 0' }}>
+          Cancelled by customer
+        </p>
+      )}
 
       {/* PREPARE BY / READY BY banner (ADR-012) — scheduled orders only. The loudest line on the
           card: full-width ink strip, large bold amber text, so staff can't miss it.

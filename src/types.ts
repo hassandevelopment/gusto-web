@@ -111,6 +111,7 @@ export interface KitchenOrder {
   placed_at: string
   updated_at: string
   completed_at: string | null
+  cancelled_by: string | null
   items: KitchenOrderItem[]
   customer: { id: string; full_name: string; phone: string } | null
 }
