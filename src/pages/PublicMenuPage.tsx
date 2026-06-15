@@ -107,15 +107,18 @@ export default function PublicMenuPage() {
             aria-label="Menu categories"
             style={{
               position: 'sticky',
-              top: 56,
-              zIndex: 40,
+              top: 55,
+              zIndex: 45,
               display: 'flex',
               gap: '0.5rem',
               overflowX: 'auto',
-              padding: '0.75rem 0',
+              // Full-bleed: break out of the container's 1.5rem side padding so the
+              // bar spans edge-to-edge and fully masks items scrolling underneath.
+              marginLeft: '-1.5rem',
+              marginRight: '-1.5rem',
+              padding: '0.75rem 1.5rem',
               marginBottom: '1.5rem',
-              backgroundColor: 'color-mix(in srgb, var(--color-bg) 92%, transparent)',
-              backdropFilter: 'blur(8px)',
+              backgroundColor: 'var(--color-bg)',
               borderBottom: '1px solid rgba(104,90,90,0.12)',
               scrollbarWidth: 'none',
             }}
