@@ -23,10 +23,17 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         boxShadow: '0 1px 3px rgba(104,90,90,0.08)',
         backgroundColor: 'var(--color-bg)',
         position: 'fixed',
-        top: 0,
+        // Extend the solid background 100px above the viewport edge so nothing can
+        // bleed into the dynamic-toolbar gap above the nav on iOS Safari. paddingTop
+        // pushes the visible bar back down to its normal position (visible bottom = 57px).
+        top: -100,
         left: 0,
         right: 0,
+        paddingTop: 100,
         zIndex: 100,
+        // Promote to its own compositing layer — fixes iOS Safari z-index/stacking glitches.
+        WebkitTransform: 'translateZ(0)',
+        transform: 'translateZ(0)',
       }}>
         <div style={{
           maxWidth: '1100px',
