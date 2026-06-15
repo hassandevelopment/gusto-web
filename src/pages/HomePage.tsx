@@ -1,6 +1,14 @@
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { Download, UtensilsCrossed, AtSign, Phone, MapPin } from 'lucide-react'
 import { menuData } from '../data/menu'
+
+const NAV_LINKS = [
+  { to: '/menu', label: 'Menu' },
+  { to: '/about', label: 'About' },
+  { to: '/terms', label: 'Terms' },
+  { to: '/refund', label: 'Refund Policy' },
+  { to: '/privacy', label: 'Privacy' },
+]
 
 /**
  * Homepage at `/` — single-viewport (no-scroll) marketing layout.
@@ -75,6 +83,37 @@ export default function HomePage() {
         >
           Janabiyah · Bahrain
         </p>
+
+        {/* ── Public nav links ─────────────────────────────────────── */}
+        <nav
+          aria-label="Main navigation"
+          style={{
+            marginTop: '0.875rem',
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: '0.25rem 0.5rem',
+          }}
+        >
+          {NAV_LINKS.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              style={({ isActive }) => ({
+                fontSize: '12px',
+                fontWeight: 500,
+                padding: '0.3rem 0.7rem',
+                borderRadius: 'var(--radius-pill)',
+                textDecoration: 'none',
+                color: isActive ? 'var(--color-accent)' : 'var(--color-text)',
+                backgroundColor: isActive ? 'rgba(199,93,44,0.08)' : 'transparent',
+                whiteSpace: 'nowrap',
+              })}
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
       </header>
 
       {/* ── Hero — 2-column on desktop, stacked on mobile ────────── */}

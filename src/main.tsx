@@ -5,7 +5,6 @@ import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 
 import HomePage from './pages/HomePage'
-import App from './App.tsx'
 
 // Kitchen routes — lazy so supabase-js never lands in the customer bundle.
 // Verify on every build: supabase chunk must NOT appear in the customer
@@ -14,10 +13,21 @@ const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'))
 const KitchenPage = lazy(() => import('./pages/KitchenPage'))
 const KitchenLogin = lazy(() => import('./pages/KitchenLogin'))
 
+// Public compliance pages — lazy-loaded to keep the initial bundle small.
+const PublicMenuPage = lazy(() => import('./pages/PublicMenuPage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
+const RefundPage = lazy(() => import('./pages/RefundPage'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+
 /**
  * Router setup:
  *   /               → HomePage
- *   /menu           → App (customer menu)
+ *   /menu           → PublicMenuPage (display-only menu for Tap Payments compliance)
+ *   /about          → AboutPage
+ *   /terms          → TermsPage
+ *   /refund         → RefundPage
+ *   /privacy        → PrivacyPage
  *   /kitchen        → KitchenPage, gated by ProtectedRoute
  *   /kitchen/login  → KitchenLogin
  *
@@ -34,7 +44,11 @@ createRoot(document.getElementById('root')!).render(
         <Suspense fallback={<div style={{ padding: '2rem', fontFamily: 'var(--font-sans)' }}>Loading…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/menu" element={<App />} />
+            <Route path="/menu" element={<PublicMenuPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/refund" element={<RefundPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
             <Route
               path="/kitchen"
               element={
