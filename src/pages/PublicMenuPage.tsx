@@ -106,9 +106,11 @@ export default function PublicMenuPage() {
             role="navigation"
             aria-label="Menu categories"
             style={{
+              // Sticks directly below the PublicLayout header (57px). z below the
+              // header (100) but above scrolling content.
               position: 'sticky',
-              top: 56,
-              zIndex: 45,
+              top: 57,
+              zIndex: 99,
               display: 'flex',
               gap: '0.5rem',
               overflowX: 'auto',
@@ -120,6 +122,7 @@ export default function PublicMenuPage() {
               marginBottom: '1.5rem',
               backgroundColor: 'var(--color-bg)',
               borderBottom: '1px solid rgba(104,90,90,0.12)',
+              boxShadow: '0 4px 8px -4px rgba(104,90,90,0.18)',
               scrollbarWidth: 'none',
             }}
           >
