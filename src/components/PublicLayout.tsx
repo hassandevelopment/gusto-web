@@ -13,8 +13,12 @@ const NAV_LINKS = [
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  // Plain block (NOT flex): a `position: sticky` element that is a direct child of a
+  // flex container is not reliably pinned by iOS Safari. Keeping this a normal
+  // block-flow container lets the document scroll and the sticky header stay glued
+  // across all browsers. No ancestor sets overflow.
   return (
-    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)' }}>
+    <div style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)' }}>
       {/* Sticky top bar: solid background so content scrolls beneath, never above it. */}
       <header style={{
         borderBottom: '1px solid rgba(104,90,90,0.1)',
@@ -129,7 +133,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         )}
       </header>
 
-      <main style={{ flex: 1 }}>
+      <main>
         {children}
       </main>
 
@@ -137,7 +141,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         borderTop: '1px solid rgba(104,90,90,0.1)',
         backgroundColor: 'var(--color-bg-cream)',
         padding: '2rem 1.5rem',
-        marginTop: 'auto',
       }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{
