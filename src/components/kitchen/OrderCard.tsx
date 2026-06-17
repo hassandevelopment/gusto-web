@@ -146,7 +146,7 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }: O
       {/* Row 1: order number + type badge */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
         <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-ink)', lineHeight: 1 }}>
-          #{order_number}
+          GST-{order_number}
         </span>
         <span style={{
           background: isDelivery ? 'var(--color-accent)' : 'var(--color-success)',
