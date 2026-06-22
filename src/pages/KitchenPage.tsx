@@ -58,7 +58,13 @@ export default function KitchenPage() {
       return
     }
 
-    const userIds = [...new Set((rawOrders ?? []).map((o: { user_id: string }) => o.user_id))]
+    // Exclude null user_id (guest + anonymized orders); passing null to the
+    // profiles `id` filter throws "invalid input syntax for type uuid".
+    const userIds = [...new Set(
+      (rawOrders ?? [])
+        .map((o: { user_id: string | null }) => o.user_id)
+        .filter((id: string | null): id is string => !!id),
+    )]
     const { data: profiles, error: pErr } = userIds.length
       ? await supabase.from('profiles').select('id, full_name, phone').in('id', userIds)
       : { data: [], error: null }
@@ -72,7 +78,7 @@ export default function KitchenPage() {
     const profileMap = new Map((profiles ?? []).map((p: { id: string; full_name: string; phone: string }) => [p.id, p]))
     const merged: KitchenOrder[] = (rawOrders ?? []).map((o: KitchenOrder) => ({
       ...o,
-      customer: profileMap.get(o.user_id) ?? null,
+      customer: o.user_id ? (profileMap.get(o.user_id) ?? null) : null,
     }))
 
     setOrders(merged)
@@ -103,7 +109,13 @@ export default function KitchenPage() {
       return
     }
 
-    const userIds = [...new Set((rawOrders ?? []).map((o: { user_id: string }) => o.user_id))]
+    // Exclude null user_id (guest + anonymized orders); passing null to the
+    // profiles `id` filter throws "invalid input syntax for type uuid".
+    const userIds = [...new Set(
+      (rawOrders ?? [])
+        .map((o: { user_id: string | null }) => o.user_id)
+        .filter((id: string | null): id is string => !!id),
+    )]
     const { data: profiles, error: pErr } = userIds.length
       ? await supabase.from('profiles').select('id, full_name, phone').in('id', userIds)
       : { data: [], error: null }
@@ -113,7 +125,7 @@ export default function KitchenPage() {
     const profileMap = new Map((profiles ?? []).map((p: { id: string; full_name: string; phone: string }) => [p.id, p]))
     const merged: KitchenOrder[] = (rawOrders ?? []).map((o: KitchenOrder) => ({
       ...o,
-      customer: profileMap.get(o.user_id) ?? null,
+      customer: o.user_id ? (profileMap.get(o.user_id) ?? null) : null,
     }))
 
     setHistoryOrders(merged)
@@ -135,7 +147,7 @@ export default function KitchenPage() {
 
     // Fetch a single order's full shape (same nested select as fetchOrders),
     // then merge its customer profile. Returns null on any error.
-    async function fetchOrderDetails(orderId: string, userId: string): Promise<KitchenOrder | null> {
+    async function fetchOrderDetails(orderId: string, userId: string | null): Promise<KitchenOrder | null> {
       const { data: order, error } = await supabase
         .from('orders')
         .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
@@ -145,12 +157,18 @@ export default function KitchenPage() {
         console.error('Realtime: failed to fetch order details', error)
         return null
       }
-      const { data: profile, error: pErr } = await supabase
-        .from('profiles')
-        .select('id, full_name, phone')
-        .eq('id', userId)
-        .maybeSingle()
-      if (pErr) console.error('Realtime: failed to fetch customer profile', pErr)
+      // Guest + anonymized orders have no profile; skip the lookup (a null id
+      // filter throws on a uuid column).
+      let profile = null
+      if (userId) {
+        const { data, error: pErr } = await supabase
+          .from('profiles')
+          .select('id, full_name, phone')
+          .eq('id', userId)
+          .maybeSingle()
+        if (pErr) console.error('Realtime: failed to fetch customer profile', pErr)
+        profile = data
+      }
       return { ...(order as KitchenOrder), customer: profile ?? null }
     }
 
@@ -158,7 +176,7 @@ export default function KitchenPage() {
       .channel(topicName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },
         async (payload) => {
-          const row = payload.new as { id: string; user_id: string }
+          const row = payload.new as { id: string; user_id: string | null }
           const fullOrder = await fetchOrderDetails(row.id, row.user_id)
           if (!fullOrder) return
           if (soundOnRef.current) playChime()

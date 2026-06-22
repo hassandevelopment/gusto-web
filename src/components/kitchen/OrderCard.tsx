@@ -93,7 +93,8 @@ interface OrderCardProps {
 
 export default function OrderCard({ order, onUpdateStatus, readOnly = false }: OrderCardProps) {
   const { order_number, order_type, status, placed_at, customer,
-    order_note, items, address_snapshot, total_fils, scheduled_for, cancelled_by } = order
+    order_note, items, address_snapshot, total_fils, scheduled_for, cancelled_by,
+    is_guest_order, was_deleted_user, guest_name, guest_phone } = order
 
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -107,8 +108,14 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }: O
   }, [status])
 
   const isDelivery = order_type === 'delivery'
-  const customerName = customer?.full_name ?? '(Unknown)'
-  const customerPhone = customer?.phone ?? null
+  // Guest orders carry contact inline; anonymized deleted-user orders show a
+  // placeholder; everyone else resolves from the joined profile.
+  const customerName = is_guest_order
+    ? `${guest_name ?? 'Guest'} (guest)`
+    : was_deleted_user
+      ? '(Deleted account)'
+      : (customer?.full_name ?? '(Unknown)')
+  const customerPhone = is_guest_order ? guest_phone : (customer?.phone ?? null)
   const totalBhd = (total_fils / 1000).toFixed(3)
   const action = nextAction(status, order_type)
 
@@ -196,10 +203,10 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }: O
         {formatAge(placed_at)}
       </p>
 
-      {/* Row 3: customer */}
+      {/* Row 3: customer. For guests the phone sits on its own line below the name. */}
       <p style={{ fontSize: '0.9375rem', color: 'var(--color-ink)', fontWeight: 600, marginBottom: '0.125rem' }}>
         {customerName}
-        {customerPhone && (
+        {customerPhone && !is_guest_order && (
           <>
             {' · '}
             <a
@@ -211,6 +218,16 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }: O
           </>
         )}
       </p>
+      {customerPhone && is_guest_order && (
+        <p style={{ fontSize: '0.875rem', margin: '0 0 0.125rem' }}>
+          <a
+            href={`tel:${customerPhone}`}
+            style={{ color: 'var(--color-accent)', textDecoration: 'none' }}
+          >
+            {customerPhone}
+          </a>
+        </p>
+      )}
 
       {/* Order note warning strip */}
       {order_note && (

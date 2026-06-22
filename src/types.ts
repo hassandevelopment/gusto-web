@@ -98,7 +98,7 @@ export interface AddressSnapshot {
 export interface KitchenOrder {
   id: string
   order_number: number
-  user_id: string
+  user_id: string | null
   order_type: OrderType
   status: OrderStatus
   subtotal_fils: number
@@ -112,6 +112,12 @@ export interface KitchenOrder {
   updated_at: string
   completed_at: string | null
   cancelled_by: string | null
+  // Guest orders (user_id IS NULL, is_guest_order TRUE) carry the customer
+  // contact inline. Anonymized deleted-user orders have was_deleted_user TRUE.
+  is_guest_order: boolean
+  was_deleted_user: boolean
+  guest_name: string | null
+  guest_phone: string | null
   items: KitchenOrderItem[]
   customer: { id: string; full_name: string; phone: string } | null
 }
