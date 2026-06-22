@@ -49,6 +49,10 @@ export default function KitchenPage() {
   // offscreen column — so we render a flat, in-place card grid instead.
   const isWide = useMediaQuery('(min-width: 1280px)')
 
+  // ≤639px: the header's text labels + email can't fit one row without forcing
+  // horizontal page overflow. Drop the email, collapse Refresh to icon-only.
+  const isPhone = useMediaQuery('(max-width: 639px)')
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setEmail(user?.email ?? null)
@@ -297,32 +301,34 @@ export default function KitchenPage() {
       <header style={{
         position: 'sticky', top: 0, zIndex: 10,
         background: 'var(--color-ink)', color: '#fff',
-        padding: '0 1rem',
+        padding: isPhone ? '0 0.75rem' : '0 1rem',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        height: '56px', flexShrink: 0,
+        flexWrap: 'wrap',
+        minHeight: '56px', flexShrink: 0,
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
       }}>
         <h1 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Kitchen</h1>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? '0.5rem' : '0.75rem' }}>
           <button
             onClick={() => fetchOrders({ alertOnPlaced: true })}
             disabled={fetchState === 'loading'}
             aria-label="Refresh orders"
             style={{
-              display: 'flex', alignItems: 'center', gap: '0.375rem',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem',
               background: 'rgba(255,255,255,0.12)', color: '#fff',
               border: 'none', borderRadius: 'var(--radius-pill)',
-              padding: '0.375rem 0.875rem', cursor: fetchState === 'loading' ? 'default' : 'pointer',
+              padding: isPhone ? '0.375rem 0.75rem' : '0.375rem 0.875rem',
+              cursor: fetchState === 'loading' ? 'default' : 'pointer',
               fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.875rem',
-              minHeight: '36px',
+              minHeight: '36px', minWidth: isPhone ? '36px' : undefined,
             }}
           >
             {fetchState === 'loading'
               ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
               : <RefreshCw size={15} />
             }
-            Refresh
+            {!isPhone && 'Refresh'}
           </button>
 
           <button
@@ -343,7 +349,8 @@ export default function KitchenPage() {
             {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
 
-          {email && (
+          {/* Email omitted on phone — it reserves up to 180px and forces overflow. */}
+          {email && !isPhone && (
             <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.55)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {email}
             </span>
@@ -356,9 +363,10 @@ export default function KitchenPage() {
               background: 'transparent', color: 'rgba(255,255,255,0.7)',
               border: '1px solid rgba(255,255,255,0.25)',
               borderRadius: 'var(--radius-pill)',
-              padding: '0.375rem 0.875rem', cursor: signingOut ? 'default' : 'pointer',
+              padding: isPhone ? '0.375rem 0.75rem' : '0.375rem 0.875rem',
+              cursor: signingOut ? 'default' : 'pointer',
               fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.875rem',
-              minHeight: '36px',
+              minHeight: '36px', whiteSpace: 'nowrap',
             }}
           >
             {signingOut ? 'Signing out…' : 'Sign Out'}

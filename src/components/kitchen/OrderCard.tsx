@@ -164,11 +164,26 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false, sho
       marginBottom: '0.75rem',
       fontFamily: 'var(--font-sans)',
     }}>
-      {/* Row 1: order number + type badge */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-        <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-ink)', lineHeight: 1 }}>
-          GST-{order_number}
-        </span>
+      {/* Row 1: order number + status chip (flat mode) on the left, type pill right.
+          Status chip rides this row to keep the card tight — color-coded for glance. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+          <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-ink)', lineHeight: 1 }}>
+            GST-{order_number}
+          </span>
+          {showStatus && (
+            <span style={{
+              background: STATUS_META[status].color, color: '#fff',
+              borderRadius: 'var(--radius-pill)',
+              padding: '0.25rem 0.6rem',
+              fontSize: '0.8125rem', fontWeight: 800,
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+              lineHeight: 1, whiteSpace: 'nowrap',
+            }}>
+              {STATUS_META[status].label}
+            </span>
+          )}
+        </div>
         <span style={{
           background: isDelivery ? 'var(--color-accent)' : 'var(--color-success)',
           color: '#fff',
@@ -180,23 +195,6 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false, sho
           {isDelivery ? 'DELIVERY' : 'PICKUP'}
         </span>
       </div>
-
-      {/* Status chip — flat card grid only (tablet/phone). Own full-width row, large
-          and bold so the stage reads from a few feet away at the kitchen screen. */}
-      {showStatus && (
-        <div style={{
-          display: 'inline-block',
-          background: STATUS_META[status].color, color: '#fff',
-          borderRadius: 'var(--radius-pill)',
-          padding: '0.35rem 0.85rem',
-          marginTop: '0.5rem',
-          fontSize: '0.9375rem', fontWeight: 800,
-          letterSpacing: '0.06em', textTransform: 'uppercase',
-          lineHeight: 1,
-        }}>
-          {STATUS_META[status].label}
-        </div>
-      )}
 
       {/* Customer-cancelled marker (History tab) — amber, matching the REWARD marker.
           Staff-cancelled orders show nothing extra (staff knows they did it). */}
@@ -230,7 +228,7 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false, sho
       )}
 
       {/* Row 2: time */}
-      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '0.25rem 0' }}>
+      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '0.125rem 0' }}>
         {formatAge(placed_at)}
       </p>
 
@@ -264,10 +262,8 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false, sho
       {order_note && (
         <div style={{
           background: '#FEF3C7', color: '#92400E',
-          padding: '0.5rem', borderRadius: '6px',
+          padding: '0.375rem 0.5rem', borderRadius: '6px',
           fontSize: '0.875rem', marginTop: '0.5rem',
-          borderTop: '1px solid rgba(104,90,90,0.08)',
-          paddingTop: '0.5rem',
         }}>
           {order_note}
         </div>
