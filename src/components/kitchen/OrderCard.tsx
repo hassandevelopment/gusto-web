@@ -69,6 +69,17 @@ function formatAddress(snap: AddressSnapshot): string {
   return parts.join(', ')
 }
 
+// Status chip meta for the flat card grid (tablet/phone), where there are no
+// column headers to convey state. Colors mirror the Kanban COLUMNS in KitchenPage.
+const STATUS_META: Record<OrderStatus, { label: string; color: string }> = {
+  placed:           { label: 'NEW',              color: 'var(--color-accent)' },
+  preparing:        { label: 'PREPARING',        color: '#D97706' },
+  ready:            { label: 'READY',            color: 'var(--color-success)' },
+  out_for_delivery: { label: 'OUT FOR DELIVERY', color: '#2563EB' },
+  completed:        { label: 'COMPLETED',        color: '#6B7280' },
+  cancelled:        { label: 'CANCELLED',        color: '#DC2626' },
+}
+
 function nextAction(
   status: OrderStatus,
   orderType: 'delivery' | 'pickup',
@@ -89,9 +100,12 @@ interface OrderCardProps {
   order: KitchenOrder
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => Promise<{ ok: boolean; error?: string }>
   readOnly?: boolean
+  // Flat card grid (tablet/phone) has no Kanban column headers — show a status
+  // chip on the card so staff can read the stage at a glance. Off in Kanban mode.
+  showStatus?: boolean
 }
 
-export default function OrderCard({ order, onUpdateStatus, readOnly = false }: OrderCardProps) {
+export default function OrderCard({ order, onUpdateStatus, readOnly = false, showStatus = false }: OrderCardProps) {
   const { order_number, order_type, status, placed_at, customer,
     order_note, items, address_snapshot, total_fils, scheduled_for, cancelled_by,
     is_guest_order, was_deleted_user, guest_name, guest_phone } = order
@@ -166,6 +180,23 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }: O
           {isDelivery ? 'DELIVERY' : 'PICKUP'}
         </span>
       </div>
+
+      {/* Status chip — flat card grid only (tablet/phone). Own full-width row, large
+          and bold so the stage reads from a few feet away at the kitchen screen. */}
+      {showStatus && (
+        <div style={{
+          display: 'inline-block',
+          background: STATUS_META[status].color, color: '#fff',
+          borderRadius: 'var(--radius-pill)',
+          padding: '0.35rem 0.85rem',
+          marginTop: '0.5rem',
+          fontSize: '0.9375rem', fontWeight: 800,
+          letterSpacing: '0.06em', textTransform: 'uppercase',
+          lineHeight: 1,
+        }}>
+          {STATUS_META[status].label}
+        </div>
+      )}
 
       {/* Customer-cancelled marker (History tab) — amber, matching the REWARD marker.
           Staff-cancelled orders show nothing extra (staff knows they did it). */}

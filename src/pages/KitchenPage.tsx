@@ -7,6 +7,13 @@ import { supabase } from '../lib/supabase'
 import type { KitchenOrder, OrderStatus } from '../types'
 import KanbanColumn from '../components/kitchen/KanbanColumn'
 import OrderCard from '../components/kitchen/OrderCard'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+
+// Status priority for the flat-grid sort (tablet/phone): New first, then down the
+// lifecycle. Mirrors the left-to-right Kanban column order.
+const STATUS_ORDER: Record<KitchenOrder['status'], number> = {
+  placed: 0, preparing: 1, ready: 2, out_for_delivery: 3, completed: 4, cancelled: 5,
+}
 
 // Returns the start of today (midnight) in Asia/Bahrain as a UTC ISO string.
 function bahrainTodayStart(): string {
@@ -36,6 +43,11 @@ export default function KitchenPage() {
   const soundOnRef = useRef(true)
   useEffect(() => { soundOnRef.current = soundOn }, [soundOn])
   const navigate = useNavigate()
+
+  // ≥1280px: the 4-column Kanban board. Below that (tablet + phone) the columns
+  // can't fit without horizontal scroll, and advancing a card would send it to an
+  // offscreen column — so we render a flat, in-place card grid instead.
+  const isWide = useMediaQuery('(min-width: 1280px)')
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -424,7 +436,7 @@ export default function KitchenPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--color-text-muted)' }}>
               No active orders
             </div>
-          ) : (
+          ) : isWide ? (
             <div
               style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', flex: 1, overflow: 'hidden' }}
               className="kitchen-kanban"
@@ -439,6 +451,30 @@ export default function KitchenPage() {
                   onUpdateStatus={updateStatus}
                 />
               ))}
+            </div>
+          ) : (
+            // Flat card grid (tablet/phone): auto-fill → 1 col on phone, 2 on iPad
+            // portrait, 3 on landscape. Cards advance in place, never moving offscreen.
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                gap: '1rem',
+                alignItems: 'start',
+              }}>
+                {[...activeOrders]
+                  .sort((a, b) =>
+                    STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
+                    a.placed_at.localeCompare(b.placed_at))
+                  .map(order => (
+                    <OrderCard
+                      key={order.id}
+                      order={order}
+                      onUpdateStatus={updateStatus}
+                      showStatus
+                    />
+                  ))}
+              </div>
             </div>
           )
         )}
@@ -506,13 +542,6 @@ export default function KitchenPage() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes scheduledPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        @media (max-width: 1199px) {
-          .kitchen-kanban {
-            display: flex !important;
-            overflow-x: auto;
-            padding-bottom: 1rem;
-          }
-        }
       `}</style>
     </div>
   )
