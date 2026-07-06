@@ -186,6 +186,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 { to: '/terms', label: 'Terms & Conditions' },
                 { to: '/refund', label: 'Refund Policy' },
                 { to: '/privacy', label: 'Privacy Policy' },
+                { to: '/delete-account', label: 'Account Deletion' },
               ].map(({ to, label }) => (
                 <Link key={to} to={to} style={{ fontSize: '13px', color: 'var(--color-text)', textDecoration: 'none' }}>
                   {label}

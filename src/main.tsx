@@ -19,17 +19,19 @@ const AboutPage = lazy(() => import('./pages/AboutPage'))
 const TermsPage = lazy(() => import('./pages/TermsPage'))
 const RefundPage = lazy(() => import('./pages/RefundPage'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage'))
 
 /**
  * Router setup:
- *   /               → HomePage
- *   /menu           → PublicMenuPage (display-only menu for Tap Payments compliance)
- *   /about          → AboutPage
- *   /terms          → TermsPage
- *   /refund         → RefundPage
- *   /privacy        → PrivacyPage
- *   /kitchen        → KitchenPage, gated by ProtectedRoute
- *   /kitchen/login  → KitchenLogin
+ *   /                → HomePage
+ *   /menu            → PublicMenuPage (display-only menu for Tap Payments compliance)
+ *   /about           → AboutPage
+ *   /terms           → TermsPage
+ *   /refund          → RefundPage
+ *   /privacy         → PrivacyPage
+ *   /delete-account  → DeleteAccountPage
+ *   /kitchen         → KitchenPage, gated by ProtectedRoute
+ *   /kitchen/login   → KitchenLogin
  *
  * basename="/gusto-web" matches vite.config.ts `base: '/gusto-web/'`.
  * If we move to a custom domain (e.g. gusto.bh) later, change both to "/".
@@ -49,6 +51,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/refund" element={<RefundPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/delete-account" element={<DeleteAccountPage />} />
             <Route
               path="/kitchen"
               element={
