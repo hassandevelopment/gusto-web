@@ -63,27 +63,41 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             />
           </Link>
 
-          {/* Desktop nav */}
-          <nav aria-label="Main navigation" style={{ display: 'flex', gap: '0.25rem' }} className="hidden-mobile">
-            {NAV_LINKS.map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                style={({ isActive }) => ({
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  padding: '0.4rem 0.75rem',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
-                  color: isActive ? 'var(--color-accent)' : 'var(--color-text)',
-                  backgroundColor: isActive ? 'rgba(199,93,44,0.08)' : 'transparent',
-                  transition: 'color 0.15s, background-color 0.15s',
-                  whiteSpace: 'nowrap',
-                })}
-              >
-                {label}
-              </NavLink>
-            ))}
+          {/* Desktop nav. "About" renders as a prominent pill (nav-pill);
+              "Menu" stays a plain text nav link. The distinction is intentional. */}
+          <nav aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} className="hidden-mobile">
+            {NAV_LINKS.map(({ to, label }) => {
+              const isAbout = to === '/about'
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={isAbout ? ({ isActive }) => (isActive ? 'nav-pill is-active' : 'nav-pill') : undefined}
+                  style={({ isActive }) =>
+                    isAbout
+                      ? {
+                          fontSize: '13px',
+                          padding: '0.35rem 0.9rem',
+                          textDecoration: 'none',
+                          whiteSpace: 'nowrap',
+                        }
+                      : {
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          padding: '0.4rem 0.75rem',
+                          borderRadius: '6px',
+                          textDecoration: 'none',
+                          color: isActive ? 'var(--color-accent)' : 'var(--color-text)',
+                          backgroundColor: isActive ? 'rgba(199,93,44,0.08)' : 'transparent',
+                          transition: 'color 0.15s, background-color 0.15s',
+                          whiteSpace: 'nowrap',
+                        }
+                  }
+                >
+                  {label}
+                </NavLink>
+              )
+            })}
           </nav>
 
           {/* Mobile hamburger */}

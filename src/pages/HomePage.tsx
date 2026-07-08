@@ -3,7 +3,6 @@ import { Download, UtensilsCrossed, AtSign, Phone, MapPin } from 'lucide-react'
 import { menuData } from '../data/menu'
 
 const NAV_LINKS = [
-  { to: '/menu', label: 'Menu' },
   { to: '/about', label: 'About' },
 ]
 
@@ -95,16 +94,13 @@ export default function HomePage() {
             <NavLink
               key={to}
               to={to}
-              style={({ isActive }) => ({
+              className={({ isActive }) => (isActive ? 'nav-pill is-active' : 'nav-pill')}
+              style={{
                 fontSize: '12px',
-                fontWeight: 500,
-                padding: '0.3rem 0.7rem',
-                borderRadius: 'var(--radius-pill)',
+                padding: '0.35rem 0.9rem',
                 textDecoration: 'none',
-                color: isActive ? 'var(--color-accent)' : 'var(--color-text)',
-                backgroundColor: isActive ? 'rgba(199,93,44,0.08)' : 'transparent',
                 whiteSpace: 'nowrap',
-              })}
+              }}
             >
               {label}
             </NavLink>
