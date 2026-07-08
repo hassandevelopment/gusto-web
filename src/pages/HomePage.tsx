@@ -5,9 +5,6 @@ import { menuData } from '../data/menu'
 const NAV_LINKS = [
   { to: '/menu', label: 'Menu' },
   { to: '/about', label: 'About' },
-  { to: '/terms', label: 'Terms' },
-  { to: '/refund', label: 'Refund Policy' },
-  { to: '/privacy', label: 'Privacy' },
 ]
 
 /**

@@ -5,9 +5,6 @@ import { Menu, X } from 'lucide-react'
 const NAV_LINKS = [
   { to: '/menu', label: 'Menu' },
   { to: '/about', label: 'About' },
-  { to: '/terms', label: 'Terms' },
-  { to: '/refund', label: 'Refund Policy' },
-  { to: '/privacy', label: 'Privacy' },
 ]
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -47,20 +44,23 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         }}>
           <Link
             to="/"
-            aria-label="IL Gusto — home"
+            aria-label="Gusto Pizzeria Ristorante — home"
             style={{
-              fontFamily: 'var(--font-wordmark)',
-              fontSize: '18px',
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              fontWeight: 400,
-              color: 'var(--color-ink)',
+              display: 'block',
               textDecoration: 'none',
               lineHeight: 1,
               flexShrink: 0,
             }}
           >
-            IL GUSTO
+            {/* Wordmark lockup image (natural 272x128, rendered at half size
+                for 2x retina sharpness). Explicit width/height prevent CLS. */}
+            <img
+              src={`${import.meta.env.BASE_URL}images/gusto-wordmark.png`}
+              alt="Gusto Pizzeria Ristorante"
+              width={136}
+              height={64}
+              style={{ display: 'block' }}
+            />
           </Link>
 
           {/* Desktop nav */}
