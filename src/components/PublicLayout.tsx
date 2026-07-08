@@ -8,8 +8,6 @@ const NAV_LINKS = [
   { to: '/about', label: 'About' },
 ]
 
-const APP_STORE_URL = 'https://apps.apple.com/app/id6780534228'
-
 /**
  * Shared chrome for the public marketing/legal pages (About, legal pages) and
  * the customer menu.
@@ -238,18 +236,10 @@ export default function PublicLayout({
               <p style={{ fontSize: '11px', letterSpacing: '0.16em', textTransform: 'uppercase', color: c.muted, fontWeight: 700 }}>
                 Download Our App
               </p>
-              <a
-                href={APP_STORE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: '13px', color: c.text, textDecoration: 'none' }}
-              >
-                App Store
-              </a>
-              <span
-                aria-disabled="true"
-                style={{ fontSize: '13px', color: c.muted, opacity: 0.7 }}
-              >
+              <span aria-disabled="true" style={{ fontSize: '13px', color: c.muted }}>
+                App Store (coming soon)
+              </span>
+              <span aria-disabled="true" style={{ fontSize: '13px', color: c.muted }}>
                 Google Play (coming soon)
               </span>
             </div>

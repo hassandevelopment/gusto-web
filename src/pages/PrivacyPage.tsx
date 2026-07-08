@@ -229,14 +229,14 @@ const meta: React.CSSProperties = {
 }
 
 const body: React.CSSProperties = {
-  fontSize: '15px',
-  lineHeight: 1.7,
+  fontSize: '16px',
+  lineHeight: 1.75,
   color: 'var(--color-warm-body)',
 }
 
 const list: React.CSSProperties = {
-  fontSize: '15px',
-  lineHeight: 1.7,
+  fontSize: '16px',
+  lineHeight: 1.75,
   color: 'var(--color-warm-body)',
   paddingLeft: '1.5rem',
   display: 'flex',

@@ -102,7 +102,7 @@ const lead: React.CSSProperties = {
 }
 
 const prose: React.CSSProperties = {
-  fontSize: '16px',
+  fontSize: '17px',
   lineHeight: 1.75,
   color: 'var(--color-warm-body)',
   margin: 0,
@@ -127,7 +127,7 @@ const label: React.CSSProperties = {
 }
 
 const value: React.CSSProperties = {
-  fontSize: '15px',
+  fontSize: '16px',
   lineHeight: 1.6,
   color: 'var(--color-warm-ink)',
 }

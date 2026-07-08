@@ -83,7 +83,7 @@ export default function PublicMenuPage() {
     <PublicLayout tone="neutral">
       {/* paddingTop clears the fixed category pill bar (~61px) that sits below the
           fixed header; the header itself is already offset by <main>'s paddingTop. */}
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '76px 1.5rem 4rem' }}>
+      <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '76px 1.5rem 4rem' }}>
         <div style={{ marginBottom: '2.5rem' }}>
           <h1 style={{
             fontFamily: 'var(--font-italic)',
@@ -107,7 +107,6 @@ export default function PublicMenuPage() {
             The container's paddingTop offsets these so items aren't hidden. */}
         {!loading && !error && sections.length > 0 && (
           <div
-            ref={navRef}
             role="navigation"
             aria-label="Menu categories"
             style={{
@@ -116,16 +115,26 @@ export default function PublicMenuPage() {
               left: 0,
               right: 0,
               zIndex: 99,
-              display: 'flex',
-              gap: '0.5rem',
-              overflowX: 'auto',
-              padding: '0.75rem 1.5rem',
               backgroundColor: 'var(--color-bg)',
               borderBottom: '1px solid rgba(104,90,90,0.12)',
               boxShadow: '0 4px 8px -4px rgba(104,90,90,0.18)',
-              scrollbarWidth: 'none',
             }}
           >
+            {/* Inner scroll strip is capped at the page content width (1180px) and
+                centred, so the pills align with the menu body instead of hugging
+                the left edge. Overflow still scrolls horizontally on narrow screens. */}
+            <div
+              ref={navRef}
+              style={{
+                display: 'flex',
+                gap: '0.5rem',
+                overflowX: 'auto',
+                padding: '0.75rem 1.5rem',
+                maxWidth: '1180px',
+                margin: '0 auto',
+                scrollbarWidth: 'none',
+              }}
+            >
             {sections.map((section) => {
               const active = activeId === section.category.id
               return (
@@ -155,6 +164,7 @@ export default function PublicMenuPage() {
                 </button>
               )
             })}
+            </div>
           </div>
         )}
 

@@ -52,9 +52,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '')
 const img = (name: string) => `${base}/images/home/${name}`
 const wordmark = `${import.meta.env.BASE_URL}images/gusto-wordmark.png`
 
-// Live App Store listing (iOS launched June 2026). Google Play is not live yet.
-const APP_STORE_URL = 'https://apps.apple.com/app/id6780534228'
-
 // Real venue details (address matches the legal pages; hours are dine-in hours).
 const PHONE_DISPLAY = '+973 1769 5556'
 const PHONE_TEL = '+97317695556'
@@ -80,7 +77,7 @@ export default function HomePage() {
             <img src={wordmark} alt="Gusto Pizzeria Ristorante" width={168} height={79} />
           </Link>
           <nav className="home-nav" aria-label="Main navigation">
-            <a className="home-navlink" href="#menu">Menu</a>
+            <Link className="home-navlink" to="/menu">Menu</Link>
             <a className="home-navlink" href="#visit">Visit</a>
             <Link className="home-navlink" to="/about">About</Link>
             <span className="home-locale">Janabiyah · Bahrain</span>
@@ -102,29 +99,26 @@ export default function HomePage() {
               your table, or your door.
             </p>
             <div className="home-cta-row">
-              <a
-                className="home-btn home-btn-primary"
-                href={APP_STORE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <span className="home-btn home-btn-primary" aria-disabled="true">
                 <Ico size={18} sw={2.2}>
-                  <path d="M12 3v12" />
-                  <path d="m8 11 4 4 4-4" />
-                  <path d="M4 21h16" />
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
                 </Ico>
-                Download the App
-              </a>
-              <Link className="home-btn home-btn-outline" to="/menu">
+                Coming Soon
+              </span>
+              <Link className="home-btn home-btn-primary" to="/menu">
                 <Ico size={17} sw={2.2}>
-                  <path d="M3 11h18" />
-                  <path d="M12 2v9" />
-                  <path d="M5 6h.01M9 6h.01" />
+                  <rect x="8" y="2" width="8" height="4" rx="1" />
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                  <path d="M12 11h4" />
+                  <path d="M12 16h4" />
+                  <path d="M8 11h.01" />
+                  <path d="M8 16h.01" />
                 </Ico>
-                View the Menu
+                View Menu
               </Link>
             </div>
-            <p className="home-micro-note">Now on the App Store · Coming soon to Google Play</p>
+            <p className="home-micro-note">App launching soon on the App Store and Google Play</p>
           </div>
           <div className="home-hero-media">
             <img
@@ -223,7 +217,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-            <a className="home-btn home-btn-dark" href={MAPS_URL} target="_blank" rel="noopener noreferrer">
+            <a className="home-btn home-btn-primary home-btn-start" href={MAPS_URL} target="_blank" rel="noopener noreferrer">
               Get directions
               <Ico size={15} sw={2.2}>
                 <path d="M7 17 17 7" />
@@ -284,13 +278,14 @@ export default function HomePage() {
         .home-h1-accent { font-style: italic; color: var(--color-warm-accent); }
         .home-hero-sub { font-family: var(--font-italic); font-size: 23px; line-height: 1.5; color: var(--color-warm-body); margin: 0 0 38px; max-width: 430px; }
         .home-cta-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        /* All CTAs share one treatment: solid terracotta, white text, readable at rest. */
         .home-btn { display: inline-flex; align-items: center; gap: 11px; border-radius: 100px; font-weight: 700; font-size: 15px; padding: 17px 30px; cursor: pointer; border: none; font-family: var(--font-archivo); }
-        .home-btn-primary { background: var(--color-warm-accent); color: #FDF7EF; box-shadow: 0 10px 26px -10px rgba(178,74,36,0.7); }
-        .home-btn-primary:hover { background: var(--color-warm-accent-deep); color: #FDF7EF; }
-        .home-btn-outline { background: transparent; color: var(--color-warm-ink); border: 1.5px solid var(--color-warm-line); padding: 17px 28px; }
-        .home-btn-outline:hover { border-color: var(--color-warm-ink); color: var(--color-warm-ink); }
-        .home-btn-dark { background: var(--color-warm-dark); color: #FBF6EC; padding: 15px 26px; font-size: 14px; align-self: flex-start; }
-        .home-btn-dark:hover { background: #453A31; color: #FBF6EC; }
+        /* .home .home-btn-primary (two classes) outranks the .home a colour rule
+           above, so button labels and their icons stay white on the terracotta. */
+        .home .home-btn-primary { background: var(--color-warm-accent); color: #FFFFFF; box-shadow: 0 10px 26px -10px rgba(178,74,36,0.7); }
+        .home .home-btn-primary:hover { background: var(--color-warm-accent-deep); color: #FFFFFF; }
+        .home-btn-start { align-self: flex-start; }
+        .home-btn[aria-disabled="true"] { cursor: default; }
         .home-micro-note { font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-warm-muted); margin: 22px 0 0; }
         .home-hero-media { aspect-ratio: 4 / 5; border-radius: 20px; overflow: hidden; box-shadow: 0 34px 70px -30px rgba(58,38,20,0.55); }
         .home-hero-media img { width: 100%; height: 100%; object-fit: cover; }
