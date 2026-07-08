@@ -1,24 +1,82 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
+import { LEGAL_LINKS } from '../data/legalLinks'
 
 const NAV_LINKS = [
   { to: '/menu', label: 'Menu' },
   { to: '/about', label: 'About' },
 ]
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+const APP_STORE_URL = 'https://apps.apple.com/app/id6780534228'
+
+/**
+ * Shared chrome for the public marketing/legal pages (About, legal pages) and
+ * the customer menu.
+ *
+ * `tone` controls the palette:
+ *   - 'warm'    (default),cream redesign palette, used by About + legal pages.
+ *   - 'neutral',the original white palette. PublicMenuPage passes this so its
+ *     fixed white category sub-nav sits flush under a matching white header
+ *     (a warm header over the white sub-nav would seam).
+ */
+export default function PublicLayout({
+  children,
+  tone = 'warm',
+}: {
+  children: React.ReactNode
+  tone?: 'warm' | 'neutral'
+}) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const warm = tone === 'warm'
+
+  const c = warm
+    ? {
+        rootBg: 'var(--color-warm-bg)',
+        headerBg: 'var(--color-warm-surface)',
+        footerBg: 'var(--color-warm-surface)',
+        ink: 'var(--color-warm-ink)',
+        text: 'var(--color-warm-body)',
+        muted: 'var(--color-warm-muted)',
+        accent: 'var(--color-warm-accent)',
+        line: 'var(--color-warm-line)',
+        navIdle: '#5A4E44',
+        font: 'var(--font-archivo)',
+      }
+    : {
+        rootBg: 'var(--color-bg)',
+        headerBg: 'var(--color-bg)',
+        footerBg: 'var(--color-bg-cream)',
+        ink: 'var(--color-ink)',
+        text: 'var(--color-text)',
+        muted: 'var(--color-text-muted)',
+        accent: 'var(--color-accent)',
+        line: 'rgba(104,90,90,0.1)',
+        navIdle: 'var(--color-text)',
+        font: 'var(--font-sans)',
+      }
+
+  const navLinkStyle = (isActive: boolean): React.CSSProperties => ({
+    fontSize: '13px',
+    fontWeight: 600,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    padding: '0.4rem 0.5rem',
+    textDecoration: 'none',
+    color: isActive ? c.accent : c.navIdle,
+    transition: 'color 0.15s',
+    whiteSpace: 'nowrap',
+  })
 
   return (
-    <div style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)' }}>
+    <div style={{ minHeight: '100dvh', backgroundColor: c.rootBg, fontFamily: c.font }}>
       {/* Fixed top bar: position:fixed is immune to scroll-context / overflow / flex
           edge cases that broke position:sticky on iOS Safari. `main` gets matching
           top padding (57px) so content starts below it. */}
       <header style={{
-        borderBottom: '1px solid rgba(104,90,90,0.1)',
-        boxShadow: '0 1px 3px rgba(104,90,90,0.08)',
-        backgroundColor: 'var(--color-bg)',
+        borderBottom: `1px solid ${c.line}`,
+        boxShadow: '0 1px 3px rgba(58,38,20,0.06)',
+        backgroundColor: c.headerBg,
         position: 'fixed',
         // Extend the solid background 100px above the viewport edge so nothing can
         // bleed into the dynamic-toolbar gap above the nav on iOS Safari. paddingTop
@@ -28,12 +86,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         right: 0,
         paddingTop: 100,
         zIndex: 100,
-        // Promote to its own compositing layer — fixes iOS Safari z-index/stacking glitches.
+        // Promote to its own compositing layer,fixes iOS Safari z-index/stacking glitches.
         WebkitTransform: 'translateZ(0)',
         transform: 'translateZ(0)',
       }}>
         <div style={{
-          maxWidth: '1100px',
+          maxWidth: '1180px',
           margin: '0 auto',
           padding: '0 1.5rem',
           height: '56px',
@@ -44,7 +102,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         }}>
           <Link
             to="/"
-            aria-label="Gusto Pizzeria Ristorante — home"
+            aria-label="Gusto Pizzeria Ristorante,home"
             style={{
               display: 'block',
               textDecoration: 'none',
@@ -63,41 +121,13 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             />
           </Link>
 
-          {/* Desktop nav. "About" renders as a prominent pill (nav-pill);
-              "Menu" stays a plain text nav link. The distinction is intentional. */}
-          <nav aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} className="hidden-mobile">
-            {NAV_LINKS.map(({ to, label }) => {
-              const isAbout = to === '/about'
-              return (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={isAbout ? ({ isActive }) => (isActive ? 'nav-pill is-active' : 'nav-pill') : undefined}
-                  style={({ isActive }) =>
-                    isAbout
-                      ? {
-                          fontSize: '13px',
-                          padding: '0.35rem 0.9rem',
-                          textDecoration: 'none',
-                          whiteSpace: 'nowrap',
-                        }
-                      : {
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          padding: '0.4rem 0.75rem',
-                          borderRadius: '6px',
-                          textDecoration: 'none',
-                          color: isActive ? 'var(--color-accent)' : 'var(--color-text)',
-                          backgroundColor: isActive ? 'rgba(199,93,44,0.08)' : 'transparent',
-                          transition: 'color 0.15s, background-color 0.15s',
-                          whiteSpace: 'nowrap',
-                        }
-                  }
-                >
-                  {label}
-                </NavLink>
-              )
-            })}
+          {/* Desktop nav,uppercase tracked links, active in the accent colour. */}
+          <nav aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }} className="hidden-mobile">
+            {NAV_LINKS.map(({ to, label }) => (
+              <NavLink key={to} to={to} style={({ isActive }) => navLinkStyle(isActive)}>
+                {label}
+              </NavLink>
+            ))}
           </nav>
 
           {/* Mobile hamburger */}
@@ -111,7 +141,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               border: 'none',
               cursor: 'pointer',
               padding: '0.5rem',
-              color: 'var(--color-ink)',
+              color: c.ink,
               display: 'none',
             }}
           >
@@ -124,12 +154,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <nav
             aria-label="Mobile navigation"
             style={{
-              borderTop: '1px solid rgba(104,90,90,0.1)',
+              borderTop: `1px solid ${c.line}`,
               padding: '0.75rem 1.5rem 1rem',
               display: 'flex',
               flexDirection: 'column',
               gap: '0.125rem',
-              backgroundColor: 'var(--color-bg)',
+              backgroundColor: c.headerBg,
             }}
           >
             {NAV_LINKS.map(({ to, label }) => (
@@ -139,12 +169,13 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 onClick={() => setMobileOpen(false)}
                 style={({ isActive }) => ({
                   fontSize: '15px',
-                  fontWeight: 500,
+                  fontWeight: 600,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
                   padding: '0.625rem 0.75rem',
                   borderRadius: '8px',
                   textDecoration: 'none',
-                  color: isActive ? 'var(--color-accent)' : 'var(--color-text)',
-                  backgroundColor: isActive ? 'rgba(199,93,44,0.08)' : 'transparent',
+                  color: isActive ? c.accent : c.text,
                 })}
               >
                 {label}
@@ -156,84 +187,77 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
       {/* Spacer offsets the fixed header (56px inner + 1px border = 57px).
           position:relative + z-index:1 puts ALL page content in a stacking context
-          below the fixed bars (nav z100, pills z99), so cards (and their box-shadows /
-          stacking contexts) can never paint over them — an iOS Safari fixed-layer fix. */}
+          below the fixed bars, so cards (and their box-shadows / stacking contexts)
+          can never paint over them,an iOS Safari fixed-layer fix. */}
       <main style={{ paddingTop: 57, position: 'relative', zIndex: 1 }}>
         {children}
       </main>
 
       <footer style={{
-        borderTop: '1px solid rgba(104,90,90,0.1)',
-        backgroundColor: 'var(--color-bg-cream)',
-        padding: '2rem 1.5rem',
+        borderTop: `1px solid ${c.line}`,
+        backgroundColor: c.footerBg,
+        padding: '2.5rem 1.5rem',
       }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1180px', margin: '0 auto' }}>
           <div style={{
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'space-between',
             alignItems: 'flex-start',
-            gap: '1.5rem',
-            marginBottom: '1.5rem',
+            gap: '1.5rem 2rem',
+            marginBottom: '1.75rem',
           }}>
             <div>
               <p style={{
-                fontFamily: 'var(--font-wordmark)',
-                fontSize: '15px',
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                color: 'var(--color-ink)',
-                marginBottom: '0.25rem',
+                fontFamily: 'var(--font-italic)',
+                fontWeight: 700,
+                fontSize: '20px',
+                letterSpacing: '0.02em',
+                color: c.ink,
+                marginBottom: '0.35rem',
               }}>
                 IL GUSTO W.L.L.
               </p>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
-                Al Janabiyah, Bahrain
+              <p style={{ fontFamily: 'var(--font-italic)', fontStyle: 'italic', fontSize: '15px', color: c.muted }}>
+                pizzeria ristorante · Al Janabiyah, Bahrain
               </p>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <p style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <p style={{ fontSize: '11px', letterSpacing: '0.16em', textTransform: 'uppercase', color: c.muted, fontWeight: 700 }}>
                 Legal
               </p>
-              {[
-                { to: '/terms', label: 'Terms & Conditions' },
-                { to: '/refund', label: 'Refund Policy' },
-                { to: '/privacy', label: 'Privacy Policy' },
-                { to: '/delete-account', label: 'Account Deletion' },
-              ].map(({ to, label }) => (
-                <Link key={to} to={to} style={{ fontSize: '13px', color: 'var(--color-text)', textDecoration: 'none' }}>
+              {LEGAL_LINKS.map(({ to, label }) => (
+                <Link key={to} to={to} style={{ fontSize: '13px', color: c.text, textDecoration: 'none' }}>
                   {label}
                 </Link>
               ))}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <p style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <p style={{ fontSize: '11px', letterSpacing: '0.16em', textTransform: 'uppercase', color: c.muted, fontWeight: 700 }}>
                 Download Our App
               </p>
               <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                aria-disabled="true"
-                style={{ fontSize: '13px', color: 'var(--color-text)', textDecoration: 'none', opacity: 0.5 }}
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '13px', color: c.text, textDecoration: 'none' }}
               >
-                App Store (coming soon)
+                App Store
               </a>
-              <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
+              <span
                 aria-disabled="true"
-                style={{ fontSize: '13px', color: 'var(--color-text)', textDecoration: 'none', opacity: 0.5 }}
+                style={{ fontSize: '13px', color: c.muted, opacity: 0.7 }}
               >
                 Google Play (coming soon)
-              </a>
+              </span>
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(104,90,90,0.1)', paddingTop: '1rem' }}>
-            <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', letterSpacing: '0.08em' }}>
-              © {new Date().getFullYear()} IL Gusto W.L.L. All rights reserved.
+          <div style={{ borderTop: `1px solid ${c.line}`, paddingTop: '1.1rem' }}>
+            <p style={{ fontSize: '11px', color: c.muted, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>
+              © {new Date().getFullYear()} IL Gusto W.L.L. · VAT incl.
             </p>
           </div>
         </div>

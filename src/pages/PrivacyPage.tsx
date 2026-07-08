@@ -5,7 +5,7 @@ const LAST_UPDATED = 'June 2026'
 export default function PrivacyPage() {
   return (
     <PublicLayout>
-      <article style={{ maxWidth: '720px', margin: '0 auto', padding: '3rem 1.5rem 4rem' }}>
+      <article style={{ maxWidth: '720px', margin: '0 auto', padding: '3rem 1.5rem 4rem', fontFamily: 'var(--font-archivo)' }}>
         <h1 style={h1}>Privacy Policy</h1>
         <p style={meta}>Last updated: {LAST_UPDATED}</p>
 
@@ -201,7 +201,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         fontStyle: 'italic',
         fontWeight: 500,
         fontSize: '1.25rem',
-        color: 'var(--color-ink)',
+        color: 'var(--color-warm-ink)',
         marginBottom: '0.75rem',
         marginTop: '2rem',
       }}>
@@ -217,27 +217,27 @@ const h1: React.CSSProperties = {
   fontStyle: 'italic',
   fontWeight: 500,
   fontSize: 'clamp(2rem, 5vw, 3rem)',
-  color: 'var(--color-ink)',
+  color: 'var(--color-warm-ink)',
   lineHeight: 1.1,
   marginBottom: '0.5rem',
 }
 
 const meta: React.CSSProperties = {
   fontSize: '13px',
-  color: 'var(--color-text-muted)',
+  color: 'var(--color-warm-muted)',
   marginBottom: '2rem',
 }
 
 const body: React.CSSProperties = {
   fontSize: '15px',
   lineHeight: 1.7,
-  color: 'var(--color-text)',
+  color: 'var(--color-warm-body)',
 }
 
 const list: React.CSSProperties = {
   fontSize: '15px',
   lineHeight: 1.7,
-  color: 'var(--color-text)',
+  color: 'var(--color-warm-body)',
   paddingLeft: '1.5rem',
   display: 'flex',
   flexDirection: 'column',

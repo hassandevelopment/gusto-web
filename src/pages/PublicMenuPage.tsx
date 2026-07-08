@@ -80,7 +80,7 @@ export default function PublicMenuPage() {
   }
 
   return (
-    <PublicLayout>
+    <PublicLayout tone="neutral">
       {/* paddingTop clears the fixed category pill bar (~61px) that sits below the
           fixed header; the header itself is already offset by <main>'s paddingTop. */}
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '76px 1.5rem 4rem' }}>

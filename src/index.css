@@ -13,10 +13,24 @@
   --color-accent-dark: #2D2828;
   --color-success:     #4A7C59;
 
+  /* Warm palette for the homepage and marketing redesign (2026-07). Kept separate from
+     the tokens above so the menu/kitchen surfaces are untouched. */
+  --color-warm-bg:          #F5EEE1;
+  --color-warm-surface:     #FBF6EC;
+  --color-warm-ink:         #241E19;
+  --color-warm-body:        #6B5E52;
+  --color-warm-muted:       #A99A8A;
+  --color-warm-card-img:    #EDE3D3;
+  --color-warm-accent:      #B24A24;
+  --color-warm-accent-deep: #8F3717;
+  --color-warm-dark:        #2A231E;
+  --color-warm-line:        rgba(42, 35, 30, 0.12);
+
   /* Typography */
   --font-sans:     'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-wordmark: 'Jost', system-ui, sans-serif;
   --font-italic:   'Cormorant Garamond', Georgia, serif;
+  --font-archivo:  'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* Radii */
   --radius-card: 12px;
