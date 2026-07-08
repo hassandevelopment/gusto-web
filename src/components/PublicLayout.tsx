@@ -57,9 +57,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <img
               src={`${import.meta.env.BASE_URL}images/gusto-wordmark.png`}
               alt="Gusto Pizzeria Ristorante"
-              width={136}
-              height={64}
-              style={{ display: 'block' }}
+              width={100}
+              height={47}
+              style={{ display: 'block', height: 'auto', maxHeight: '100%' }}
             />
           </Link>
 

@@ -56,16 +56,15 @@ export default function HomePage() {
         <Link
           to="/"
           aria-label="Gusto Pizzeria Ristorante — home"
-          className="font-wordmark text-ink no-underline inline-block"
-          style={{
-            fontSize: '22px',
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            fontWeight: 400,
-            lineHeight: 1,
-          }}
+          className="no-underline inline-block"
         >
-          GUSTO
+          <img
+            src={`${import.meta.env.BASE_URL}images/gusto-wordmark.png`}
+            alt="Gusto Pizzeria Ristorante"
+            width={200}
+            height={94}
+            style={{ display: 'block' }}
+          />
         </Link>
         <p
           className="text-text-muted"
