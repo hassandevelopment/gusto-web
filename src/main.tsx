@@ -33,8 +33,8 @@ const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage'))
  *   /kitchen         → KitchenPage, gated by ProtectedRoute
  *   /kitchen/login   → KitchenLogin
  *
- * basename="/gusto-web" matches vite.config.ts `base: '/gusto-web/'`.
- * If we move to a custom domain (e.g. gusto.bh) later, change both to "/".
+ * basename="/" matches vite.config.ts `base: '/'` for the custom domain
+ * (gusto.bh). Keep the two in sync if the hosting path ever changes.
  *
  * Note for GitHub Pages SPA: the build script copies dist/index.html to
  * dist/404.html so GitHub serves the SPA shell at any path.
@@ -42,7 +42,7 @@ const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage'))
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <BrowserRouter basename="/gusto-web">
+      <BrowserRouter basename="/">
         <Suspense fallback={<div style={{ padding: '2rem', fontFamily: 'var(--font-sans)' }}>Loading…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />

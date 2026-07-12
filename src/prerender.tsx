@@ -26,7 +26,7 @@ export function render(route: string): string {
   const Page = PAGES[route]
   if (!Page) throw new Error(`prerender: no page registered for route ${route}`)
   return renderToString(
-    <StaticRouter location={`/gusto-web${route}`} basename="/gusto-web">
+    <StaticRouter location={route} basename="/">
       <Page />
     </StaticRouter>,
   )
