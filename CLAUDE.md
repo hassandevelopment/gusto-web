@@ -121,7 +121,7 @@ Current (verify against `package.json`):
 - **Icons:** `lucide-react`
 - **State:** React Context + `localStorage` (customer cart). No Redux/Zustand needed.
 - **Backend client (kitchen only):** `@supabase/supabase-js` v2
-- **Deployment:** GitHub Pages (current) via `.github/workflows/deploy.yml`. Cloudflare Pages was the original intent; that migration may happen alongside a custom-domain move (`gusto.bh` pending confirmation).
+- **Deployment:** GitHub Pages via `.github/workflows/deploy.yml`, served at the custom domain `https://gusto.bh/` (live since 2026-07-13). The old `hassandevelopment.github.io/gusto-web/` URL 301-redirects to it. The custom domain is configured in repo Settings, Pages (Actions deploys ignore the `public/CNAME` file; it is kept as documentation and as a safety net for branch-based deploys).
 
 **Do not use:** Next.js, Firebase, any SSR framework, any state management library beyond Context, any UI component library (Tailwind is enough), `gh-pages` npm package (the workflow handles deploys natively).
 
@@ -134,6 +134,7 @@ Current (verify against `package.json`):
 ├── .github/workflows/
 │   └── deploy.yml              # GH Pages deploy on push to main
 ├── public/
+│   ├── CNAME                   # "gusto.bh" (informational; Actions deploys use repo settings)
 │   ├── images/                 # Food photos per category (customer)
 │   ├── og-image.jpg
 │   └── ...
@@ -158,12 +159,12 @@ Current (verify against `package.json`):
 │   │   └── KitchenPage.tsx     # Kitchen board (route: /kitchen, protected)
 │   ├── types.ts
 │   ├── App.tsx                 # Customer menu (route: /menu) — legacy single-file
-│   ├── main.tsx                # Router setup; basename="/gusto-web"
+│   ├── main.tsx                # Router setup; basename="/"
 │   └── index.css               # Tailwind v4 entry + @theme tokens
 ├── menu.json                   # Source of truth for customer menu items
 ├── CLAUDE.md
 ├── package.json
-├── vite.config.ts              # base: '/gusto-web/'
+├── vite.config.ts              # base: '/'
 └── tsconfig*.json
 ```
 
@@ -388,15 +389,15 @@ Backend is the shared Supabase project (`hhykbkdxsiclfjbrklyr`). Schema is owned
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173/gusto-web/
+npm run dev          # http://localhost:5173/
 npm run typecheck
-npm run build        # tsc + vite build + copy index.html → 404.html
-npm run preview      # http://localhost:4173/gusto-web/
+npm run build        # tsc + vite build + SSR prerender + copy index.html → 404.html
+npm run preview      # http://localhost:4173/
 ```
 
-Deploy: automatic via `.github/workflows/deploy.yml` on push to `main`. GitHub Pages serves at `hassandevelopment.github.io/gusto-web/`.
+Deploy: automatic via `.github/workflows/deploy.yml` on push to `main`. GitHub Pages serves at `https://gusto.bh/` (custom domain, live since 2026-07-13); the old `hassandevelopment.github.io/gusto-web/` URL 301-redirects there.
 
-Future: custom domain `gusto.bh` once ownership is confirmed. When that happens, change `base` in `vite.config.ts` and `basename` in `main.tsx` from `/gusto-web/` back to `/`, and add `public/CNAME` containing the domain.
+Custom domain notes: `base` in `vite.config.ts` and `basename` in `main.tsx` are both `/` and must stay in sync. The domain itself is set in repo Settings, Pages; `public/CNAME` is informational for Actions-based deploys. Absolute URLs (canonical, `og:url`, `og:image`) in `index.html` point at `https://gusto.bh/`.
 
 ---
 
@@ -424,8 +425,8 @@ Future: custom domain `gusto.bh` once ownership is confirmed. When that happens,
 ### Kitchen tool
 
 - Customer name/phone display on the kitchen card: staff-read `profiles` (simpler RLS expansion) vs. denormalize name+phone onto `orders` at checkout (cleaner privacy boundary). DEFERRED to Phase 3 card design.
-- Custom domain timing — pending confirmation on `gusto.bh` ownership.
-- Migration off Lina — the restaurant pays Orderlina yearly. Once the mobile app + this kitchen tool are live and the customer menu is feature-complete enough to replace Lina, reprint QR codes to point at the new domain and cancel the Lina subscription. Not yet scheduled.
+- ~~Custom domain timing~~ RESOLVED 2026-07-13: `gusto.bh` is live on GitHub Pages.
+- Migration off Lina: the restaurant pays Orderlina yearly. The domain (`gusto.bh`) is now live; once the mobile app + this kitchen tool are live and the customer menu is feature-complete enough to replace Lina, reprint QR codes to point at `gusto.bh` and cancel the Lina subscription. Not yet scheduled.
 
 ### Cross-cutting
 
