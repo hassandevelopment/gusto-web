@@ -15,6 +15,14 @@ const STATUS_ORDER: Record<KitchenOrder['status'], number> = {
   placed: 0, preparing: 1, ready: 2, out_for_delivery: 3, completed: 4, cancelled: 5,
 }
 
+// Authoritative kitchen visibility (DEV-Gusto-App migration 039 / ADR-046):
+// an online order is hidden until Tap captures payment. RLS is only a backstop;
+// this client predicate is the authority, applied to both the queries and the
+// Realtime handlers. Cash/card orders are always visible.
+function isKitchenVisible(o: { payment_method: string; payment_status: string }): boolean {
+  return o.payment_method !== 'online' || o.payment_status === 'paid'
+}
+
 // Returns the start of today (midnight) in Asia/Bahrain as a UTC ISO string.
 function bahrainTodayStart(): string {
   const bahrainDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bahrain' }).format(new Date())
@@ -34,6 +42,14 @@ export default function KitchenPage() {
   const [email, setEmail] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const [orders, setOrders] = useState<KitchenOrder[]>([])
+  // Synchronous mirror of `orders` for the Realtime closures. The setOrders
+  // updater is batched (runs async), so membership and the chime decision must
+  // read this ref, and every Realtime add/merge/remove writes it directly.
+  // Otherwise two UPDATE events arriving before the effect below flushes would
+  // both see inState=false and both try to add. The useEffect is a backstop for
+  // state changes from other paths (fetchOrders, updateStatus).
+  const ordersRef = useRef<KitchenOrder[]>([])
+  useEffect(() => { ordersRef.current = orders }, [orders])
   const [fetchState, setFetchState] = useState<FetchState>('loading')
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active')
   const [historyOrders, setHistoryOrders] = useState<KitchenOrder[]>([])
@@ -66,6 +82,9 @@ export default function KitchenPage() {
       .from('orders')
       .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
       .not('status', 'in', '(completed,cancelled)')
+      // Authoritative kitchen visibility filter (see isKitchenVisible). ANDed
+      // with the status filter: hide unpaid/pending online orders from staff.
+      .or('payment_method.neq.online,payment_status.eq.paid')
       .order('placed_at', { ascending: true })
 
     if (error) {
@@ -117,6 +136,9 @@ export default function KitchenPage() {
       .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
       .in('status', ['completed', 'cancelled'])
       .gte('placed_at', todayStart)
+      // Same visibility filter: an abandoned/unpaid online order that was
+      // cancelled was never a real kitchen order, so keep it out of History too.
+      .or('payment_method.neq.online,payment_status.eq.paid')
       .order('placed_at', { ascending: false })
 
     if (error) {
@@ -188,36 +210,71 @@ export default function KitchenPage() {
       return { ...(order as KitchenOrder), customer: profile ?? null }
     }
 
+    // Add an order from a Realtime event (INSERT, or an UPDATE-as-insert when a
+    // hidden order first becomes visible). Membership and the chime are decided
+    // from ordersRef synchronously; the setOrders updater is batched, so a flag
+    // set inside it would still be false here and the chime would never fire
+    // (the exact bug this fixes). The ref is written directly so a second event
+    // arriving before React re-renders sees the order as already present.
+    async function addOrderFromEvent(row: { id: string; user_id: string | null }) {
+      const fullOrder = await fetchOrderDetails(row.id, row.user_id)
+      if (!fullOrder) return
+      if (!isKitchenVisible(fullOrder)) return // authoritative re-check on the full row
+      if (ordersRef.current.some((o) => o.id === fullOrder.id)) return // idempotent
+      ordersRef.current = [...ordersRef.current, fullOrder].sort((a, b) =>
+        a.placed_at.localeCompare(b.placed_at),
+      )
+      setOrders(ordersRef.current)
+      if (soundOnRef.current) playChime()
+    }
+
     const channel = supabase
       .channel(topicName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },
-        async (payload) => {
+        (payload) => {
           const row = payload.new as { id: string; user_id: string | null }
-          const fullOrder = await fetchOrderDetails(row.id, row.user_id)
-          if (!fullOrder) return
-          if (soundOnRef.current) playChime()
-          setOrders((prev) => {
-            // Idempotent by id: a concurrent manual Refresh may have added it already
-            if (prev.some((o) => o.id === fullOrder.id)) return prev
-            return [...prev, fullOrder].sort((a, b) => a.placed_at.localeCompare(b.placed_at))
-          })
+          addOrderFromEvent(row)
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' },
         (payload) => {
-          const updated = payload.new as Partial<KitchenOrder> & { id: string }
-          // Spread preserves existing items/customer (not present on the raw row);
-          // only orders-table columns (e.g. status) change. Drop terminal statuses.
-          setOrders((prev) =>
-            prev
+          const updated = payload.new as Partial<KitchenOrder> & {
+            id: string
+            user_id: string | null
+            status: OrderStatus
+            payment_method: string
+            payment_status: string
+          }
+          const inState = ordersRef.current.some((o) => o.id === updated.id)
+          const terminal = updated.status === 'completed' || updated.status === 'cancelled'
+
+          if (inState) {
+            // Merge changed columns onto the known row (spread preserves nested
+            // items/customer, absent on the raw payload). Drop it if it is now
+            // terminal or has stopped passing the visibility filter.
+            const next = ordersRef.current
               .map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
-              .filter((o) => o.status !== 'completed' && o.status !== 'cancelled'),
-          )
+              .filter((o) => o.status !== 'completed' && o.status !== 'cancelled')
+              .filter((o) => isKitchenVisible(o))
+            ordersRef.current = next
+            setOrders(next)
+          } else if (!terminal && isKitchenVisible(updated)) {
+            // UPDATE-as-insert: a hidden order (e.g. an unpaid online order that
+            // just flipped to payment_status='paid') arrives as an UPDATE for a
+            // row this client has never seen. Treat it as a new order: appear
+            // immediately and fire the new-order chime, exactly as an INSERT.
+            addOrderFromEvent({ id: updated.id, user_id: updated.user_id ?? null })
+          }
+          // else: unknown row that is terminal or still not visible, so ignore.
         })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' },
         (payload) => {
           const deletedId = (payload.old as { id?: string }).id
           if (!deletedId) return
-          setOrders((prev) => prev.filter((o) => o.id !== deletedId))
+          // Write the ref directly so a following synchronous event does not see
+          // the removed order as still present.
+          const next = ordersRef.current.filter((o) => o.id !== deletedId)
+          ordersRef.current = next
+          setOrders(next)
         })
       .subscribe((status) => {
         console.log(`Realtime [${topicName}]:`, status)

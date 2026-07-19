@@ -105,7 +105,13 @@ export interface KitchenOrder {
   delivery_fee_fils: number
   total_fils: number
   address_snapshot: AddressSnapshot | null
-  payment_method: string
+  // Payment fields land via DEV-Gusto-App migrations 039 (payment_status,
+  // widened payment_method) and 041 (refund_owed). The kitchen visibility
+  // filter (payment_method != 'online' OR payment_status = 'paid') is the
+  // authority; RLS is only a backstop.
+  payment_method: 'cash' | 'card' | 'online'
+  payment_status: 'unpaid' | 'pending' | 'paid' | 'failed'
+  refund_owed: boolean
   order_note: string | null
   scheduled_for: string | null
   placed_at: string
