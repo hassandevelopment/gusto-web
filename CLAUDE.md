@@ -27,6 +27,19 @@ When schema, status, or Realtime questions arise: check `DEV-Gusto-App/CLAUDE.md
 
 ---
 
+## Payments — `/payment-complete` bounce page
+
+`/payment-complete` ([src/pages/PaymentCompletePage.tsx](src/pages/PaymentCompletePage.tsx), prerendered via `src/prerender.tsx`) is the Tap Payments redirect bounce page. Tap's hosted payment page cannot redirect to a custom scheme, so it redirects here, and this page forwards the query string **verbatim** into `devgustoapp://payment-complete` so the app's in-app browser session closes and the app resumes.
+
+Two rules bind any edit to this page:
+
+- **Forward verbatim.** Pass `window.location.search` through unchanged. Do not parse, rename, allowlist, or drop params. Tap's param names are not all known in advance.
+- **Never imply success.** Tap redirects here on failure too (declined cards, abandoned 3DS, cancellation). The page cannot know the outcome; only the app's server-side verify-payment call does. Copy must stay outcome-neutral.
+
+Full contract (verbatim forwarding, the untrusted-params rule binding the app-side deep-link handler, outcome-neutral copy, and the accepted iOS dialog edge case) lives in `DEV-Gusto-App/docs/decisions.md` **ADR-043**. Read it before changing this page.
+
+---
+
 ## Skills — When to read them
 
 For **customer menu** work (any frontend change under `/`, `/menu`, or related components):
