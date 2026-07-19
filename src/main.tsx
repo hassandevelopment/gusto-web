@@ -20,6 +20,7 @@ const TermsPage = lazy(() => import('./pages/TermsPage'))
 const RefundPage = lazy(() => import('./pages/RefundPage'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
 const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage'))
+const PaymentCompletePage = lazy(() => import('./pages/PaymentCompletePage'))
 
 /**
  * Router setup:
@@ -30,6 +31,7 @@ const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage'))
  *   /refund          → RefundPage
  *   /privacy         → PrivacyPage
  *   /delete-account  → DeleteAccountPage
+ *   /payment-complete→ PaymentCompletePage (Tap redirect bounce → devgustoapp://)
  *   /kitchen         → KitchenPage, gated by ProtectedRoute
  *   /kitchen/login   → KitchenLogin
  *
@@ -52,6 +54,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/refund" element={<RefundPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/delete-account" element={<DeleteAccountPage />} />
+            <Route path="/payment-complete" element={<PaymentCompletePage />} />
             <Route
               path="/kitchen"
               element={

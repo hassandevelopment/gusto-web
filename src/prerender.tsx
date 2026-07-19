@@ -14,10 +14,12 @@ import { renderToString } from 'react-dom/server'
 import { StaticRouter } from 'react-router-dom'
 import PrivacyPage from './pages/PrivacyPage'
 import DeleteAccountPage from './pages/DeleteAccountPage'
+import PaymentCompletePage from './pages/PaymentCompletePage'
 
 const PAGES: Record<string, React.FC> = {
   '/privacy': PrivacyPage,
   '/delete-account': DeleteAccountPage,
+  '/payment-complete': PaymentCompletePage,
 }
 
 export const routes = Object.keys(PAGES)
