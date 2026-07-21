@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import type { KitchenOrder, OrderStatus } from '../types'
 import KanbanColumn from '../components/kitchen/KanbanColumn'
 import OrderCard from '../components/kitchen/OrderCard'
+import RefundCard from '../components/kitchen/RefundCard'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 
 // Status priority for the flat-grid sort (tablet/phone): New first, then down the
@@ -51,9 +52,11 @@ export default function KitchenPage() {
   const ordersRef = useRef<KitchenOrder[]>([])
   useEffect(() => { ordersRef.current = orders }, [orders])
   const [fetchState, setFetchState] = useState<FetchState>('loading')
-  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active')
+  const [activeTab, setActiveTab] = useState<'active' | 'history' | 'refunds'>('active')
   const [historyOrders, setHistoryOrders] = useState<KitchenOrder[]>([])
   const [historyFetchState, setHistoryFetchState] = useState<FetchState>('idle')
+  const [refundOrders, setRefundOrders] = useState<KitchenOrder[]>([])
+  const [refundFetchState, setRefundFetchState] = useState<FetchState>('idle')
   const channelRef = useRef<RealtimeChannel | null>(null)
   const [soundOn, setSoundOn] = useState(true)
   const soundOnRef = useRef(true)
@@ -168,6 +171,80 @@ export default function KitchenPage() {
 
     setHistoryOrders(merged)
     setHistoryFetchState('idle')
+  }, [])
+
+  // ── Refund-owed section (ADR-046) ─────────────────────────────────────────
+  // Its own query: the full ADR-046 predicate. Rows are mostly terminal
+  // (cancelled), so this does NOT reuse the active-board query; it is not filtered
+  // by status or placed_at. Refetch-on-open, no Realtime for v1 (refunds are rare
+  // and low-urgency; a manual Refresh covers a missed row). Customer name + phone
+  // ARE joined (same as the active board): processing the Tap refund is only half
+  // the job, staff also have to phone the person whose money is held.
+  const fetchRefunds = useCallback(async () => {
+    setRefundFetchState('loading')
+    const { data: rawOrders, error } = await supabase
+      .from('orders')
+      .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
+      .eq('payment_method', 'online')
+      // refund_owed OR (paid AND cancelled) — the paid+cancelled arm is a backstop;
+      // amendment 1 guarantees every kitchen-cancelled paid order also carries
+      // refund_owed, so in practice both arms coincide.
+      .or('refund_owed.eq.true,and(payment_status.eq.paid,status.eq.cancelled)')
+      .order('placed_at', { ascending: false })
+
+    if (error) {
+      console.error('Failed to fetch refunds:', error)
+      setRefundFetchState('error')
+      return
+    }
+
+    // Exclude null user_id (guest + anonymized orders); passing null to the
+    // profiles `id` filter throws "invalid input syntax for type uuid".
+    const userIds = [...new Set(
+      (rawOrders ?? [])
+        .map((o: { user_id: string | null }) => o.user_id)
+        .filter((id: string | null): id is string => !!id),
+    )]
+    const { data: profiles, error: pErr } = userIds.length
+      ? await supabase.from('profiles').select('id, full_name, phone').in('id', userIds)
+      : { data: [], error: null }
+
+    if (pErr) console.error('Failed to fetch refund profiles:', pErr)
+
+    const profileMap = new Map((profiles ?? []).map((p: { id: string; full_name: string; phone: string }) => [p.id, p]))
+    setRefundOrders((rawOrders ?? []).map((o: KitchenOrder) => ({
+      ...o,
+      customer: o.user_id ? (profileMap.get(o.user_id) ?? null) : null,
+    })))
+    setRefundFetchState('idle')
+  }, [])
+
+  // Clear a refund-owed order. Two shapes, gated on payment_status (ADR-046
+  // amendment 3):
+  //   * paid (dirs 3, 5): clear the flag ONLY, never touch status — a dir-5 order
+  //     is still live on the cook board and must keep cooking; a dir-3 order stays
+  //     cancelled.
+  //   * not-paid + still live (dir 4): void it in the SAME update, else it lands in
+  //     the digest STUCK bucket (online + placed + unpaid) and stays kitchen-invisible.
+  //   * not-paid + already cancelled (dir 1): clear the flag only; preserve cancelled_by.
+  // Only mutates refundOrders (drops the cleared card). Never touches the active
+  // `orders` state, so a paid, live dir-5 order stays on the board untouched; the
+  // Realtime echo merges refund_owed=false in place (and for dir 4, the status echo
+  // removes it, which is correct — but a dir-4 row is hidden from the board anyway).
+  const markRefunded = useCallback(async (order: KitchenOrder): Promise<{ ok: boolean; error?: string }> => {
+    const patch =
+      order.payment_status === 'paid'
+        ? { refund_owed: false }
+        : order.status === 'cancelled'
+          ? { refund_owed: false }
+          : { refund_owed: false, status: 'cancelled', cancelled_by: 'staff' }
+    const { error } = await supabase.from('orders').update(patch).eq('id', order.id)
+    if (error) {
+      console.error('Mark refunded failed:', error)
+      return { ok: false, error: error.message }
+    }
+    setRefundOrders((prev) => prev.filter((o) => o.id !== order.id))
+    return { ok: true }
   }, [])
 
   // ── Realtime subscription on orders (ADR-004 channel-reuse guard) ─────────
@@ -312,11 +389,21 @@ export default function KitchenPage() {
     orderId: string,
     newStatus: OrderStatus,
   ): Promise<{ ok: boolean; error?: string }> {
+    // Cancelling a PAID online order owes the customer a refund (ADR-046 dir 3).
+    // Set refund_owed in the SAME update that writes status, so the row never
+    // exists as paid+cancelled without the marker. This invariant is enforced
+    // ONLY by this client: a cancel done via raw SQL or a future admin tool
+    // bypasses it. The durable fix is a DB trigger, queued separately.
+    const cancelling = ordersRef.current.find((o) => o.id === orderId)
+    const owesRefundOnCancel =
+      cancelling?.payment_method === 'online' && cancelling?.payment_status === 'paid'
     const patch =
       newStatus === 'completed'
         ? { status: newStatus, completed_at: new Date().toISOString() }
         : newStatus === 'cancelled'
-          ? { status: newStatus, cancelled_by: 'staff' }
+          ? owesRefundOnCancel
+            ? { status: newStatus, cancelled_by: 'staff', refund_owed: true }
+            : { status: newStatus, cancelled_by: 'staff' }
           : { status: newStatus }
     try {
       const { error } = await supabase.from('orders').update(patch).eq('id', orderId)
@@ -440,13 +527,17 @@ export default function KitchenPage() {
           borderBottom: '2px solid rgba(255,255,255,0.1)',
           marginBottom: '1rem', flexShrink: 0,
         }}>
-          {(['active', 'history'] as const).map(tab => (
+          {(['active', 'history', 'refunds'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => {
                 setActiveTab(tab)
                 if (tab === 'history' && historyFetchState === 'idle' && historyOrders.length === 0) {
                   fetchHistory()
+                }
+                // Refunds: fetch every time the tab opens (refetch-on-open, no Realtime).
+                if (tab === 'refunds') {
+                  fetchRefunds()
                 }
               }}
               style={{
@@ -458,10 +549,10 @@ export default function KitchenPage() {
                 padding: '0.5rem 1.25rem',
                 fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: '0.9375rem',
                 cursor: 'pointer', letterSpacing: '0.02em',
-                textTransform: 'capitalize',
+                textTransform: 'capitalize', whiteSpace: 'nowrap',
               }}
             >
-              {tab === 'active' ? 'Active' : 'History'}
+              {tab === 'active' ? 'Active' : tab === 'history' ? 'History' : 'Refund Owed'}
               {tab === 'active' && activeOrders.length > 0 && (
                 <span style={{
                   marginLeft: '0.4rem',
@@ -469,6 +560,14 @@ export default function KitchenPage() {
                   borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
                   padding: '0.1rem 0.45rem',
                 }}>{activeOrders.length}</span>
+              )}
+              {tab === 'refunds' && refundOrders.length > 0 && (
+                <span style={{
+                  marginLeft: '0.4rem',
+                  background: '#DC2626', color: '#fff',
+                  borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
+                  padding: '0.1rem 0.45rem',
+                }}>{refundOrders.length}</span>
               )}
             </button>
           ))}
@@ -597,6 +696,62 @@ export default function KitchenPage() {
                       readOnly
                     />
                   </div>
+                ))}
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Refund Owed tab content */}
+        {activeTab === 'refunds' && (
+          refundFetchState === 'loading' ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '0.5rem', color: 'var(--color-text-muted)' }}>
+              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+              <span>Loading refunds…</span>
+            </div>
+          ) : refundFetchState === 'error' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem', color: 'var(--color-text-muted)' }}>
+              <p>Couldn't load refunds — retry</p>
+              <button
+                onClick={fetchRefunds}
+                style={{
+                  background: 'var(--color-accent)', color: '#fff',
+                  border: 'none', borderRadius: 'var(--radius-pill)',
+                  padding: '0.625rem 1.5rem', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)', fontWeight: 600,
+                  fontSize: '0.9375rem', minHeight: '44px',
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : refundOrders.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--color-text-muted)' }}>
+              No refunds owed
+            </div>
+          ) : (
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, maxWidth: '48ch' }}>
+                  Money captured but not fulfillable. Process the refund in the Tap dashboard using the charge id, then mark it here to stop the hourly alert.
+                </p>
+                <button
+                  onClick={fetchRefunds}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.375rem',
+                    background: 'rgba(255,255,255,0.12)', color: '#fff',
+                    border: 'none', borderRadius: 'var(--radius-pill)',
+                    padding: '0.375rem 0.875rem', cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.875rem',
+                    minHeight: '36px', flexShrink: 0,
+                  }}
+                >
+                  <RefreshCw size={14} /> Refresh
+                </button>
+              </div>
+              <div style={{ columns: 'auto 340px', gap: '1rem' }}>
+                {refundOrders.map(order => (
+                  <RefundCard key={order.id} order={order} onMarkRefunded={markRefunded} />
                 ))}
               </div>
             </div>

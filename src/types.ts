@@ -112,6 +112,10 @@ export interface KitchenOrder {
   payment_method: 'cash' | 'card' | 'online'
   payment_status: 'unpaid' | 'pending' | 'paid' | 'failed'
   refund_owed: boolean
+  // Tap charge id (migration 039). Null for cash/card or a capture whose id could
+  // not be read. Shown on the refund card so Hassan can find the charge in the
+  // Tap dashboard to process the manual refund.
+  tap_charge_id: string | null
   order_note: string | null
   scheduled_for: string | null
   placed_at: string
