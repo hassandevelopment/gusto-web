@@ -57,6 +57,26 @@ export default function KitchenPage() {
   const [historyFetchState, setHistoryFetchState] = useState<FetchState>('idle')
   const [refundOrders, setRefundOrders] = useState<KitchenOrder[]>([])
   const [refundFetchState, setRefundFetchState] = useState<FetchState>('idle')
+  // Badge count for the Refund Owed tab. Populated on page load by a lightweight
+  // id-only query (see fetchRefundCount), independent of which tab is active, so
+  // the badge is correct the moment the page mounts. fetchRefunds (tab content)
+  // keeps it in sync when the tab is opened; updateStatus/markRefunded nudge it
+  // for the in-session create/clear paths.
+  const [refundOwedCount, setRefundOwedCount] = useState(0)
+  // The count the user has "seen": set to the current count when the Refund Owed
+  // tab is opened. The badge pulses while refundOwedCount > acknowledgedRefundCount
+  // (an unattended refund exists) and goes solid once acknowledged; it resumes
+  // pulsing if the count later climbs above what was acknowledged.
+  const [acknowledgedRefundCount, setAcknowledgedRefundCount] = useState(0)
+  // Invariant: acknowledged must never exceed the count. Enforced in ONE place so
+  // no count mutation has to remember it. Without this, clearing one of several
+  // refunds would drop the count while acknowledged stayed high, and a later new
+  // refund would fail to re-cross acknowledged — rendering solid instead of
+  // pulsing, silently under-flagging a real unattended refund. Clamps DOWN only;
+  // it never raises acknowledged, so the "unattended" signal is preserved.
+  useEffect(() => {
+    setAcknowledgedRefundCount((a) => Math.min(a, refundOwedCount))
+  }, [refundOwedCount])
   const channelRef = useRef<RealtimeChannel | null>(null)
   const [soundOn, setSoundOn] = useState(true)
   const soundOnRef = useRef(true)
@@ -180,6 +200,26 @@ export default function KitchenPage() {
   // and low-urgency; a manual Refresh covers a missed row). Customer name + phone
   // ARE joined (same as the active board): processing the Tap refund is only half
   // the job, staff also have to phone the person whose money is held.
+  // Lightweight refund-owed count for the tab badge. Runs on page load (below),
+  // independent of the active tab. Selects ONLY the ids matching the ADR-046
+  // predicate and uses the row count — it never pulls the full order rows,
+  // items, addons, or profiles that fetchRefunds needs for the tab content.
+  const fetchRefundCount = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('payment_method', 'online')
+      .or('refund_owed.eq.true,and(payment_status.eq.paid,status.eq.cancelled)')
+
+    if (error) {
+      console.error('Failed to fetch refund-owed count:', error)
+      return
+    }
+    setRefundOwedCount((data ?? []).length)
+  }, [])
+
+  useEffect(() => { fetchRefundCount() }, [fetchRefundCount])
+
   const fetchRefunds = useCallback(async () => {
     setRefundFetchState('loading')
     const { data: rawOrders, error } = await supabase
@@ -216,6 +256,12 @@ export default function KitchenPage() {
       ...o,
       customer: o.user_id ? (profileMap.get(o.user_id) ?? null) : null,
     })))
+    // Reconcile the badge with the authoritative tab content. fetchRefunds only
+    // runs while the user is on the Refund Owed tab, so acknowledge the count too
+    // — the user is looking at it, so the badge goes solid.
+    const count = (rawOrders ?? []).length
+    setRefundOwedCount(count)
+    setAcknowledgedRefundCount(count)
     setRefundFetchState('idle')
   }, [])
 
@@ -244,6 +290,7 @@ export default function KitchenPage() {
       return { ok: false, error: error.message }
     }
     setRefundOrders((prev) => prev.filter((o) => o.id !== order.id))
+    setRefundOwedCount((c) => Math.max(0, c - 1))
     return { ok: true }
   }, [])
 
@@ -408,6 +455,10 @@ export default function KitchenPage() {
     try {
       const { error } = await supabase.from('orders').update(patch).eq('id', orderId)
       if (error) return { ok: false, error: error.message }
+      // Cancelling a paid online order just created a refund owed — bump the badge
+      // now so it appears (and pulses, since it's unattended) without waiting for a
+      // manual refresh or a trip to the Refund Owed tab.
+      if (owesRefundOnCancel) setRefundOwedCount((c) => c + 1)
       // Optimistic local apply — moves/clears the card immediately without waiting for
       // the realtime echo. The echo is idempotent: same status spread + terminal filter.
       setOrders((prev) =>
@@ -537,6 +588,10 @@ export default function KitchenPage() {
                 }
                 // Refunds: fetch every time the tab opens (refetch-on-open, no Realtime).
                 if (tab === 'refunds') {
+                  // Acknowledge immediately so the badge stops pulsing on click,
+                  // before fetchRefunds resolves. fetchRefunds re-acknowledges to
+                  // the authoritative count once it lands.
+                  setAcknowledgedRefundCount(refundOwedCount)
                   fetchRefunds()
                 }
               }}
@@ -561,13 +616,21 @@ export default function KitchenPage() {
                   padding: '0.1rem 0.45rem',
                 }}>{activeOrders.length}</span>
               )}
-              {tab === 'refunds' && refundOrders.length > 0 && (
+              {/* Refund-owed badge lives on the Refund Owed tab label but renders
+                  regardless of which tab is active, so an unattended refund is
+                  visible from Active and History too. Pulses while unattended
+                  (count above what's been acknowledged), solid once acknowledged. */}
+              {tab === 'refunds' && refundOwedCount > 0 && (
                 <span style={{
                   marginLeft: '0.4rem',
+                  display: 'inline-block',
                   background: '#DC2626', color: '#fff',
                   borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
                   padding: '0.1rem 0.45rem',
-                }}>{refundOrders.length}</span>
+                  animation: refundOwedCount > acknowledgedRefundCount
+                    ? 'refundPulse 1s ease-in-out infinite'
+                    : 'none',
+                }}>{refundOwedCount}</span>
               )}
             </button>
           ))}
@@ -762,6 +825,11 @@ export default function KitchenPage() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes scheduledPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes refundPulse {
+          0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.7); }
+          70%  { box-shadow: 0 0 0 7px rgba(220,38,38,0); }
+          100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+        }
       `}</style>
     </div>
   )
