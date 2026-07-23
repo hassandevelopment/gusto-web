@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw, Loader2, Volume2, VolumeX } from 'lucide-react'
+import { RefreshCw, Loader2, Volume2, VolumeX, AlertTriangle } from 'lucide-react'
 import { playChime, unlockAudio } from '../lib/chime'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -23,6 +23,25 @@ const STATUS_ORDER: Record<KitchenOrder['status'], number> = {
 function isKitchenVisible(o: { payment_method: string; payment_status: string }): boolean {
   return o.payment_method !== 'online' || o.payment_status === 'paid'
 }
+
+// Backup-poll interval override, enabled in the PRODUCTION build (the board is
+// tested on gusto.bh, so a dev-only knob is useless there). ?poll=<ms> is honoured
+// only within [3s, 5min]; anything outside is IGNORED and falls back to the 60s
+// default (clamp-by-reject, not clamp-to-bound: ?poll=1000 gives 60s, not 3s).
+const POLL_DEFAULT_MS = 60_000
+function parsePollMs(): number {
+  if (typeof window === 'undefined') return POLL_DEFAULT_MS
+  const raw = new URLSearchParams(window.location.search).get('poll')
+  if (raw == null) return POLL_DEFAULT_MS
+  const n = Number(raw)
+  return Number.isFinite(n) && n >= 3_000 && n <= 300_000 ? n : POLL_DEFAULT_MS
+}
+
+// Watchdog threshold: if no socket-liveness signal (a Realtime event or a
+// heartbeat 'ok') has landed in this long, treat the live link as dead and show
+// the banner. 80s is just over three 25s heartbeat intervals, so ordinary jitter
+// never trips it.
+const SOCKET_STALE_MS = 80_000
 
 // Returns the start of today (midnight) in Asia/Bahrain as a UTC ISO string.
 function bahrainTodayStart(): string {
@@ -83,6 +102,20 @@ export default function KitchenPage() {
   useEffect(() => { soundOnRef.current = soundOn }, [soundOn])
   const navigate = useNavigate()
 
+  // Backup-poll cadence, resolved once from the URL (see parsePollMs).
+  const [pollMs] = useState(parsePollMs)
+
+  // Layer 2 connection watchdog. lastSocketAliveRef is stamped ONLY by Realtime
+  // events and heartbeat 'ok', NEVER by the REST poll (two-clock rule, ADR-050):
+  // a working poll must not mask a dead socket, so the banner reflects the socket's
+  // health even while the board stays fresh on backup polling.
+  const lastSocketAliveRef = useRef(Date.now())
+  const [connectionStale, setConnectionStale] = useState(false)
+  const markSocketAlive = useCallback(() => {
+    lastSocketAliveRef.current = Date.now()
+    setConnectionStale(false)
+  }, [])
+
   // ≥1280px: the 4-column Kanban board. Below that (tablet + phone) the columns
   // can't fit without horizontal scroll, and advancing a card would send it to an
   // offscreen column — so we render a flat, in-place card grid instead.
@@ -98,9 +131,12 @@ export default function KitchenPage() {
     })
   }, [])
 
-  const fetchOrders = useCallback(async (opts?: { alertOnPlaced?: boolean }) => {
-    setFetchState('loading')
-
+  // Shared loader for the active board: the visibility-filtered active-orders
+  // query plus the customer-profile merge. ONE source for the filter, so the
+  // active board, manual Refresh, and the backup poll can never drift from each
+  // other or from the Realtime handlers (see isKitchenVisible). Returns null on
+  // any error, leaving it to the caller to decide whether to surface it.
+  const loadBoardOrders = useCallback(async (): Promise<KitchenOrder[] | null> => {
     const { data: rawOrders, error } = await supabase
       .from('orders')
       .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
@@ -112,8 +148,7 @@ export default function KitchenPage() {
 
     if (error) {
       console.error('Failed to fetch orders:', error)
-      setFetchState('error')
-      return
+      return null
     }
 
     // Exclude null user_id (guest + anonymized orders); passing null to the
@@ -129,16 +164,23 @@ export default function KitchenPage() {
 
     if (pErr) {
       console.error('Failed to fetch profiles:', pErr)
-      setFetchState('error')
-      return
+      return null
     }
 
     const profileMap = new Map((profiles ?? []).map((p: { id: string; full_name: string; phone: string }) => [p.id, p]))
-    const merged: KitchenOrder[] = (rawOrders ?? []).map((o: KitchenOrder) => ({
+    return (rawOrders ?? []).map((o: KitchenOrder) => ({
       ...o,
       customer: o.user_id ? (profileMap.get(o.user_id) ?? null) : null,
     }))
+  }, [])
 
+  const fetchOrders = useCallback(async (opts?: { alertOnPlaced?: boolean }) => {
+    setFetchState('loading')
+    const merged = await loadBoardOrders()
+    if (!merged) {
+      setFetchState('error')
+      return
+    }
     setOrders(merged)
     setFetchState('idle')
 
@@ -146,9 +188,35 @@ export default function KitchenPage() {
     if (opts?.alertOnPlaced && soundOnRef.current && merged.some(o => o.status === 'placed')) {
       playChime()
     }
-  }, [])
+  }, [loadBoardOrders])
 
   useEffect(() => { fetchOrders({ alertOnPlaced: true }) }, [fetchOrders])
+
+  // ── Layer 3: backup REST poll (bounds worst-case staleness if the socket dies) ──
+  // Independent of Realtime. A full resync of the active board on an interval that
+  // fires the SAME chime for any genuinely new order id, so a silent socket does
+  // not mean a silent alarm (the failure that matters on the pass). Dedup is
+  // structural: this poll and the Realtime add both gate on ordersRef membership,
+  // so whichever sees an order first adds it and chimes, and the other is a no-op.
+  // Deliberately does NOT stamp lastSocketAliveRef: the poll working must never
+  // mask a dead socket from the watchdog (two-clock rule, ADR-050).
+  const pollForNewOrders = useCallback(async () => {
+    const fetched = await loadBoardOrders()
+    if (!fetched) return // transient error: keep the current board untouched
+    const knownIds = new Set(ordersRef.current.map((o) => o.id))
+    const hasNew = fetched.some((o) => !knownIds.has(o.id))
+    // Keep the synchronous mirror authoritative so a Realtime event landing right
+    // after this resync sees the polled-in orders as already present (no re-add,
+    // no double chime).
+    ordersRef.current = fetched
+    setOrders(fetched)
+    if (hasNew && soundOnRef.current) playChime()
+  }, [loadBoardOrders])
+
+  useEffect(() => {
+    const id = setInterval(() => { pollForNewOrders() }, pollMs)
+    return () => clearInterval(id)
+  }, [pollForNewOrders, pollMs])
 
   const fetchHistory = useCallback(async () => {
     setHistoryFetchState('loading')
@@ -356,11 +424,13 @@ export default function KitchenPage() {
       .channel(topicName)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },
         (payload) => {
+          markSocketAlive() // any inbound event proves the socket is delivering
           const row = payload.new as { id: string; user_id: string | null }
           addOrderFromEvent(row)
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' },
         (payload) => {
+          markSocketAlive()
           const updated = payload.new as Partial<KitchenOrder> & {
             id: string
             user_id: string | null
@@ -392,6 +462,7 @@ export default function KitchenPage() {
         })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' },
         (payload) => {
+          markSocketAlive()
           const deletedId = (payload.old as { id?: string }).id
           if (!deletedId) return
           // Write the ref directly so a following synchronous event does not see
@@ -402,6 +473,12 @@ export default function KitchenPage() {
         })
       .subscribe((status) => {
         console.log(`Realtime [${topicName}]:`, status)
+        // Layer 1: drive the connection banner off the subscribe lifecycle so a
+        // socket that errors/closes flips it without waiting for the watchdog.
+        if (status === 'SUBSCRIBED') markSocketAlive()
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setConnectionStale(true)
+        }
       })
 
     channelRef.current = channel
@@ -424,6 +501,29 @@ export default function KitchenPage() {
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [fetchOrders])
+
+  // ── Layer 2: staleness watchdog ───────────────────────────────────────────
+  // Every 15s, compare now against the last socket-liveness stamp. If nothing has
+  // arrived in SOCKET_STALE_MS the live link is treated as dead and the banner
+  // shows — even while the Layer 3 poll keeps the board fresh (two-clock rule).
+  useEffect(() => {
+    const id = setInterval(() => {
+      setConnectionStale(Date.now() - lastSocketAliveRef.current > SOCKET_STALE_MS)
+    }, 15_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Layer 1: socket liveness from heartbeats ──────────────────────────────
+  // onHeartbeat fires ~every 25s; an 'ok' proves the socket is live even when no
+  // orders are arriving, and a 'timeout'/'disconnected' flips the banner at once
+  // rather than waiting for the watchdog. Registered independently of the channel
+  // effect so the channel-reuse early-return can never skip it.
+  useEffect(() => {
+    supabase.realtime.onHeartbeat((status) => {
+      if (status === 'ok') markSocketAlive()
+      else if (status === 'timeout' || status === 'disconnected') setConnectionStale(true)
+    })
+  }, [markSocketAlive])
 
   // ── Unlock AudioContext on first staff gesture (autoplay policy) ──────────
   useEffect(() => {
@@ -568,6 +668,39 @@ export default function KitchenPage() {
           </button>
         </div>
       </header>
+
+      {/* Connection-lost banner (Layer 2). Shows whenever the socket looks dead,
+          even while the backup poll keeps the board fresh — polling is slower, so
+          staff must know the live link is down. Loud by colour AND shape (red +
+          warning glyph + bold), not colour alone. Auto-clears the moment a
+          heartbeat 'ok' or a Realtime event stamps the socket alive again. */}
+      {connectionStale && (
+        <div role="alert" style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
+          background: '#DC2626', color: '#fff',
+          padding: '0.625rem 1rem',
+          fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: '0.9375rem',
+          borderBottom: '3px solid #7F1D1D', flexShrink: 0,
+        }}>
+          <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: '12rem' }}>
+            Live connection lost. New orders may arrive late or not at all until this clears.
+          </span>
+          <button
+            onClick={() => fetchOrders({ alertOnPlaced: true })}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.375rem',
+              background: '#fff', color: '#7F1D1D',
+              border: 'none', borderRadius: 'var(--radius-pill)',
+              padding: '0.375rem 0.875rem', cursor: 'pointer',
+              fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: '0.875rem',
+              minHeight: '36px', flexShrink: 0,
+            }}
+          >
+            <RefreshCw size={14} /> Refresh now
+          </button>
+        </div>
+      )}
 
       {/* Body */}
       <main style={{ flex: 1, padding: '1rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
