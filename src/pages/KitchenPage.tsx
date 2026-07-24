@@ -380,7 +380,7 @@ export default function KitchenPage() {
       .from('orders')
       .select('id')
       .eq('payment_method', 'online')
-      .or('refund_owed.eq.true,and(payment_status.eq.paid,status.eq.cancelled)')
+      .eq('refund_owed', true)
 
     if (error) {
       console.error('Failed to fetch refund-owed count:', error)
@@ -397,10 +397,12 @@ export default function KitchenPage() {
       .from('orders')
       .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
       .eq('payment_method', 'online')
-      // refund_owed OR (paid AND cancelled) — the paid+cancelled arm is a backstop;
-      // amendment 1 guarantees every kitchen-cancelled paid order also carries
-      // refund_owed, so in practice both arms coincide.
-      .or('refund_owed.eq.true,and(payment_status.eq.paid,status.eq.cancelled)')
+      // refund_owed is the single source of truth. The former second arm
+      // (paid AND cancelled) existed only because nothing set refund_owed when the
+      // kitchen cancelled a paid order; migration 048's trigger now sets it on every
+      // write path, so that arm was redundant AND made rows unclearable (a cleared
+      // row still matched paid+cancelled and returned on the next refetch forever).
+      .eq('refund_owed', true)
       .order('placed_at', { ascending: false })
 
     if (error) {
