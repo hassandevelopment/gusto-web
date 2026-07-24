@@ -43,6 +43,40 @@ function parsePollMs(): number {
 // never trips it.
 const SOCKET_STALE_MS = 80_000
 
+// Cadence of the repeating unadvanced-order alarm (see the alarm effect).
+const ALARM_INTERVAL_MS = 30_000
+
+// settings.operating_hours shape: keyed by lowercase 3-letter weekday, HH:MM strings.
+type DayHours = { open: string; close: string }
+type OperatingHours = Record<string, DayHours>
+
+// Current Asia/Bahrain weekday key (mon..sun) and minutes-since-local-midnight.
+function bahrainDayAndMinutes(): { day: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bahrain', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date())
+  const day = (parts.find((p) => p.type === 'weekday')?.value ?? '').toLowerCase()
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0') % 24 // some engines emit '24' at midnight
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0')
+  return { day, minutes: hour * 60 + minute }
+}
+
+// Whether the restaurant is open right now per settings.operating_hours. Every
+// close time is <= 23:45, so there is no past-midnight window to wrap. Gates the
+// AUDIBLE alarm only, and fails CLOSED: if hours are unknown we do NOT beep, so a
+// failed settings load can never produce an overnight alarm that gets muted and
+// leaves the kitchen silent the next day (the exact chain this gate prevents).
+// The visual alarm is never gated on this.
+function isOpenNow(hours: OperatingHours | null): boolean {
+  if (!hours) return false
+  const { day, minutes } = bahrainDayAndMinutes()
+  const today = hours[day]
+  if (!today) return false
+  const [oh, om] = today.open.split(':').map(Number)
+  const [ch, cm] = today.close.split(':').map(Number)
+  return minutes >= oh * 60 + om && minutes < ch * 60 + cm
+}
+
 // Returns the start of today (midnight) in Asia/Bahrain as a UTC ISO string.
 function bahrainTodayStart(): string {
   const bahrainDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bahrain' }).format(new Date())
@@ -115,6 +149,19 @@ export default function KitchenPage() {
     lastSocketAliveRef.current = Date.now()
     setConnectionStale(false)
   }, [])
+
+  // Operating hours (gates the audible alarm only). Mirrored into a ref so the
+  // alarm interval reads the latest without re-subscribing.
+  const [operatingHours, setOperatingHours] = useState<OperatingHours | null>(null)
+  const hoursRef = useRef<OperatingHours | null>(null)
+  useEffect(() => { hoursRef.current = operatingHours }, [operatingHours])
+
+  // Whether the AudioContext is actually running. Drives the "tap to enable sound"
+  // affordance: a suspended context makes every chime silent, so staff need to see
+  // that sound is off. Not reactive on its own, so we sample audioState() on
+  // gestures, on tab focus, and on each alarm tick.
+  const [audioReady, setAudioReady] = useState(false)
+  const refreshAudioReady = useCallback(() => { setAudioReady(audioState() === 'running') }, [])
 
   // ≥1280px: the 4-column Kanban board. Below that (tablet + phone) the columns
   // can't fit without horizontal scroll, and advancing a card would send it to an
@@ -191,7 +238,7 @@ export default function KitchenPage() {
     }))
   }, [])
 
-  const fetchOrders = useCallback(async (opts?: { alertOnPlaced?: boolean }) => {
+  const fetchOrders = useCallback(async () => {
     setFetchState('loading')
     const merged = await loadBoardOrders()
     if (!merged) {
@@ -200,14 +247,27 @@ export default function KitchenPage() {
     }
     setOrders(merged)
     setFetchState('idle')
+    // No chime here by design: the old on-load chime fired for every 'placed' order
+    // on any incidental trigger (load, Refresh, tab focus, reconnect), regardless of
+    // age. The repeating unadvanced-order alarm replaces it (see the alarm effect).
+  }, [loadBoardOrders])
 
-    // On page load / manual Refresh: alert staff if unacknowledged 'placed' orders exist.
-    if (opts?.alertOnPlaced && soundOnRef.current && merged.some(o => o.status === 'placed')) {
-      logAndChime('on-load', merged.filter(o => o.status === 'placed').map(o => o.id).join(','), undefined)
+  useEffect(() => { fetchOrders() }, [fetchOrders])
+
+  // Operating hours for the audible-alarm gate. Loaded on mount and refreshed on
+  // tab focus (the row almost never changes; a stale copy only affects whether the
+  // repeat may beep, never the board).
+  const fetchOperatingHours = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('settings').select('value').eq('key', 'operating_hours').maybeSingle()
+    if (error) {
+      console.error('Failed to fetch operating hours:', error)
+      return
     }
-  }, [loadBoardOrders, logAndChime])
+    setOperatingHours((data?.value as OperatingHours | undefined) ?? null)
+  }, [])
 
-  useEffect(() => { fetchOrders({ alertOnPlaced: true }) }, [fetchOrders])
+  useEffect(() => { fetchOperatingHours() }, [fetchOperatingHours])
 
   // ── Layer 3: backup REST poll (bounds worst-case staleness if the socket dies) ──
   // Independent of Realtime. A full resync of the active board on an interval that
@@ -236,6 +296,30 @@ export default function KitchenPage() {
     const id = setInterval(() => { pollForNewOrders() }, pollMs)
     return () => clearInterval(id)
   }, [pollForNewOrders, pollMs])
+
+  // ── Repeating unadvanced-order alarm ──────────────────────────────────────
+  // ONE timer for the page lifetime. Each tick reads the CURRENT board (ordersRef):
+  // if any order is still 'placed', beep. Purely state-derived, so it cannot outlive
+  // a real unadvanced order (advancing or cancelling the last placed order silences
+  // the very next tick) and no stale flag can keep it armed or leave it behind. One
+  // beep per tick no matter how many placed orders, so no overlapping chimes.
+  //
+  // The AUDIBLE beep is gated on operating hours: it can never sound overnight, get
+  // muted, and leave the kitchen silent the next day. The VISUAL alarm (the pulsing
+  // "N new" indicator) is not gated and shows a stale placed order at any hour. A
+  // suspended AudioContext also makes the beep silent, which is exactly why the
+  // visual channel is the primary one; refreshAudioReady keeps the tap-to-enable
+  // affordance honest.
+  useEffect(() => {
+    const id = setInterval(() => {
+      refreshAudioReady()
+      const placed = ordersRef.current.filter((o) => o.status === 'placed')
+      if (placed.length > 0 && soundOnRef.current && isOpenNow(hoursRef.current)) {
+        logAndChime('unadvanced-alarm', placed.map((o) => o.id).join(','), undefined)
+      }
+    }, ALARM_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [refreshAudioReady])
 
   const fetchHistory = useCallback(async () => {
     setHistoryFetchState('loading')
@@ -515,11 +599,14 @@ export default function KitchenPage() {
     function handleVisibility() {
       if (document.visibilityState === 'visible') {
         fetchOrders() // full server resync; reconciles any events missed while hidden
+        fetchOperatingHours() // hours may have rolled over while hidden
+        unlockAudio() // the context is re-suspended on background; try to resume
+        refreshAudioReady()
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [fetchOrders])
+  }, [fetchOrders, fetchOperatingHours, refreshAudioReady])
 
   // ── Layer 2: staleness watchdog ───────────────────────────────────────────
   // Every 15s, compare now against the last socket-liveness stamp. If nothing has
@@ -544,12 +631,21 @@ export default function KitchenPage() {
     })
   }, [markSocketAlive])
 
-  // ── Unlock AudioContext on first staff gesture (autoplay policy) ──────────
+  // ── Unlock AudioContext on staff gestures (autoplay policy) ───────────────
+  // Do NOT detach after the first gesture: the browser re-suspends the context
+  // when the tab backgrounds, so every gesture must be free to resume it, and each
+  // one refreshes the audioReady state that drives the tap-to-enable affordance.
   useEffect(() => {
-    const unlock = () => { unlockAudio(); window.removeEventListener('pointerdown', unlock) }
+    const unlock = () => { unlockAudio(); refreshAudioReady() }
     window.addEventListener('pointerdown', unlock)
-    return () => window.removeEventListener('pointerdown', unlock)
-  }, [])
+    window.addEventListener('keydown', unlock)
+    window.addEventListener('touchstart', unlock)
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+      window.removeEventListener('touchstart', unlock)
+    }
+  }, [refreshAudioReady])
 
   async function updateStatus(
     orderId: string,
@@ -580,11 +676,14 @@ export default function KitchenPage() {
       if (owesRefundOnCancel) setRefundOwedCount((c) => c + 1)
       // Optimistic local apply — moves/clears the card immediately without waiting for
       // the realtime echo. The echo is idempotent: same status spread + terminal filter.
-      setOrders((prev) =>
-        prev
-          .map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-          .filter((o) => o.status !== 'completed' && o.status !== 'cancelled'),
-      )
+      // Compute from ordersRef and write the mirror synchronously (as the Realtime
+      // handlers do) so the alarm interval cannot read a just-advanced order as still
+      // 'placed' in the window before the orders-sync effect flushes.
+      const next = ordersRef.current
+        .map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+        .filter((o) => o.status !== 'completed' && o.status !== 'cancelled')
+      ordersRef.current = next
+      setOrders(next)
       return { ok: true }
     } catch (e) {
       console.error('Status update failed:', e)
@@ -605,6 +704,13 @@ export default function KitchenPage() {
 
   const activeOrders = orders.filter(o => COLUMNS.some(c => c.key === o.status))
 
+  // Unadvanced ('placed') orders drive the always-on VISUAL alarm, independent of
+  // audio and of operating hours. audioBlocked is true when sound is on but the
+  // context is not running, i.e. every chime is being silently dropped and staff
+  // need a gesture to restore sound.
+  const placedCount = orders.filter(o => o.status === 'placed').length
+  const audioBlocked = soundOn && !audioReady
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
@@ -621,11 +727,55 @@ export default function KitchenPage() {
         minHeight: '56px', flexShrink: 0,
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
       }}>
-        <h1 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Kitchen</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', minWidth: 0 }}>
+          <h1 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Kitchen</h1>
+          {/* Always-on VISUAL alarm: pulses red while any order is unadvanced, at any
+              hour and regardless of whether audio is muted or the context is locked. */}
+          {placedCount > 0 && (
+            <span
+              role="status"
+              aria-live="polite"
+              aria-label={`${placedCount} new order${placedCount === 1 ? '' : 's'} waiting to be started`}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                background: '#DC2626', color: '#fff',
+                borderRadius: 'var(--radius-pill)',
+                padding: '0.15rem 0.6rem', fontWeight: 700, fontSize: '0.8125rem',
+                whiteSpace: 'nowrap',
+                animation: 'scheduledPulse 1.1s ease-in-out infinite',
+              }}
+            >
+              {placedCount} new
+            </span>
+          )}
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? '0.5rem' : '0.75rem' }}>
+          {/* Tap-to-enable-sound affordance: shown only when sound is on but the
+              context is suspended (chimes silently dropped). Any gesture resumes audio
+              via the window listener; this is an explicit target and escalates (pulses)
+              while orders are waiting. */}
+          {audioBlocked && (
+            <button
+              onClick={() => { unlockAudio(); refreshAudioReady() }}
+              aria-label="Enable new-order sound"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem',
+                background: '#DC2626', color: '#fff',
+                border: 'none', borderRadius: 'var(--radius-pill)',
+                padding: isPhone ? '0.375rem 0.625rem' : '0.375rem 0.875rem',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: '0.875rem',
+                minHeight: '36px', whiteSpace: 'nowrap',
+                animation: placedCount > 0 ? 'refundPulse 1s ease-in-out infinite' : 'none',
+              }}
+            >
+              <VolumeX size={15} />
+              {!isPhone && 'Enable sound'}
+            </button>
+          )}
           <button
-            onClick={() => fetchOrders({ alertOnPlaced: true })}
+            onClick={() => fetchOrders()}
             disabled={fetchState === 'loading'}
             aria-label="Refresh orders"
             style={{
@@ -649,7 +799,7 @@ export default function KitchenPage() {
             onClick={() => {
               const next = !soundOn
               setSoundOn(next)
-              if (next) unlockAudio()
+              if (next) { unlockAudio(); refreshAudioReady() }
             }}
             aria-label={soundOn ? 'Mute new-order sound' : 'Unmute new-order sound'}
             style={{
@@ -706,7 +856,7 @@ export default function KitchenPage() {
             Live connection lost. New orders may arrive late or not at all until this clears.
           </span>
           <button
-            onClick={() => fetchOrders({ alertOnPlaced: true })}
+            onClick={() => fetchOrders()}
             style={{
               display: 'flex', alignItems: 'center', gap: '0.375rem',
               background: '#fff', color: '#7F1D1D',
@@ -799,7 +949,7 @@ export default function KitchenPage() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem', color: 'var(--color-text-muted)' }}>
               <p>Couldn't load orders — retry</p>
               <button
-                onClick={() => fetchOrders({ alertOnPlaced: true })}
+                onClick={() => fetchOrders()}
                 style={{
                   background: 'var(--color-accent)', color: '#fff',
                   border: 'none', borderRadius: 'var(--radius-pill)',
