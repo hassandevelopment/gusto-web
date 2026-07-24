@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RefreshCw, Loader2, Volume2, VolumeX, AlertTriangle } from 'lucide-react'
-import { playChime, unlockAudio } from '../lib/chime'
+import { playChime, unlockAudio, audioState } from '../lib/chime'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { KitchenOrder, OrderStatus } from '../types'
@@ -131,6 +131,23 @@ export default function KitchenPage() {
     })
   }, [])
 
+  // TEMPORARY diagnostic (chime-lag investigation, 2026-07-24). Fires the chime
+  // and logs, in one console line, which of the four paths fired, for which order
+  // id(s), whether the poll considered them new, the live AudioContext state, and
+  // whether the sound actually played (sounded=false means a suspended/locked
+  // context silently dropped it). The next occurrence then says exactly which path
+  // chimed and whether audio was locked. Remove once the lag is understood.
+  const logAndChime = useCallback(
+    (source: string, orderId: string | undefined, hasNew: boolean | undefined) => {
+      const sounded = playChime()
+      console.log(
+        `[chime] source=${source} order=${orderId ?? 'n/a'} hasNew=${hasNew ?? 'n/a'} ` +
+        `audio=${audioState()} sounded=${sounded} soundOn=${soundOnRef.current}`,
+      )
+    },
+    [],
+  )
+
   // Shared loader for the active board: the visibility-filtered active-orders
   // query plus the customer-profile merge. ONE source for the filter, so the
   // active board, manual Refresh, and the backup poll can never drift from each
@@ -186,9 +203,9 @@ export default function KitchenPage() {
 
     // On page load / manual Refresh: alert staff if unacknowledged 'placed' orders exist.
     if (opts?.alertOnPlaced && soundOnRef.current && merged.some(o => o.status === 'placed')) {
-      playChime()
+      logAndChime('on-load', merged.filter(o => o.status === 'placed').map(o => o.id).join(','), undefined)
     }
-  }, [loadBoardOrders])
+  }, [loadBoardOrders, logAndChime])
 
   useEffect(() => { fetchOrders({ alertOnPlaced: true }) }, [fetchOrders])
 
@@ -204,14 +221,16 @@ export default function KitchenPage() {
     const fetched = await loadBoardOrders()
     if (!fetched) return // transient error: keep the current board untouched
     const knownIds = new Set(ordersRef.current.map((o) => o.id))
-    const hasNew = fetched.some((o) => !knownIds.has(o.id))
+    // Log the exact ids the poll thinks are new: if an id here also appears in an
+    // earlier realtime-insert log line, the dedup failed and the poll re-chimed.
+    const newIds = fetched.filter((o) => !knownIds.has(o.id)).map((o) => o.id)
     // Keep the synchronous mirror authoritative so a Realtime event landing right
     // after this resync sees the polled-in orders as already present (no re-add,
     // no double chime).
     ordersRef.current = fetched
     setOrders(fetched)
-    if (hasNew && soundOnRef.current) playChime()
-  }, [loadBoardOrders])
+    if (newIds.length > 0 && soundOnRef.current) logAndChime('poll', newIds.join(','), true)
+  }, [loadBoardOrders, logAndChime])
 
   useEffect(() => {
     const id = setInterval(() => { pollForNewOrders() }, pollMs)
@@ -408,7 +427,7 @@ export default function KitchenPage() {
     // set inside it would still be false here and the chime would never fire
     // (the exact bug this fixes). The ref is written directly so a second event
     // arriving before React re-renders sees the order as already present.
-    async function addOrderFromEvent(row: { id: string; user_id: string | null }) {
+    async function addOrderFromEvent(row: { id: string; user_id: string | null }, source: string) {
       const fullOrder = await fetchOrderDetails(row.id, row.user_id)
       if (!fullOrder) return
       if (!isKitchenVisible(fullOrder)) return // authoritative re-check on the full row
@@ -417,7 +436,7 @@ export default function KitchenPage() {
         a.placed_at.localeCompare(b.placed_at),
       )
       setOrders(ordersRef.current)
-      if (soundOnRef.current) playChime()
+      if (soundOnRef.current) logAndChime(source, fullOrder.id, undefined)
     }
 
     const channel = supabase
@@ -426,7 +445,7 @@ export default function KitchenPage() {
         (payload) => {
           markSocketAlive() // any inbound event proves the socket is delivering
           const row = payload.new as { id: string; user_id: string | null }
-          addOrderFromEvent(row)
+          addOrderFromEvent(row, 'realtime-insert')
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' },
         (payload) => {
@@ -456,7 +475,7 @@ export default function KitchenPage() {
             // just flipped to payment_status='paid') arrives as an UPDATE for a
             // row this client has never seen. Treat it as a new order: appear
             // immediately and fire the new-order chime, exactly as an INSERT.
-            addOrderFromEvent({ id: updated.id, user_id: updated.user_id ?? null })
+            addOrderFromEvent({ id: updated.id, user_id: updated.user_id ?? null }, 'update-as-insert')
           }
           // else: unknown row that is terminal or still not visible, so ignore.
         })

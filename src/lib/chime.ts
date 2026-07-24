@@ -16,9 +16,19 @@ export function unlockAudio(): void {
   if (c && c.state === 'suspended') c.resume().catch(() => {})
 }
 
-export function playChime(): void {
+// Diagnostic helper: the live AudioContext state without forcing creation, so
+// logging can show whether a chime was dropped by a suspended (autoplay-locked)
+// context. Returns 'uninitialised' if no context has been created yet.
+export function audioState(): AudioContextState | 'uninitialised' {
+  return ctx ? ctx.state : 'uninitialised'
+}
+
+// Returns true if the chime actually played, false if it was dropped because the
+// AudioContext was not running (suspended/uninitialised). Callers can log the
+// result to tell an audible chime from a silently-dropped one.
+export function playChime(): boolean {
   const c = getCtx()
-  if (!c || c.state !== 'running') return
+  if (!c || c.state !== 'running') return false
 
   // Tunable knobs:
   const PEAK = 0.45                          // loudness 0..1 (higher = louder)
@@ -48,4 +58,5 @@ export function playChime(): void {
     }
     t += cycleGap
   }
+  return true
 }
