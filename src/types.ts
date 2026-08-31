@@ -112,6 +112,10 @@ export interface KitchenOrder {
   payment_method: 'cash' | 'card' | 'online'
   payment_status: 'unpaid' | 'pending' | 'paid' | 'failed'
   refund_owed: boolean
+  // Pre-launch test/dev orders (DEV-Gusto-App migration 055). true = hidden from
+  // the kitchen board and history; real orders default false. The kitchen filter
+  // uses `is_test IS NOT TRUE` so nulls are treated as visible.
+  is_test: boolean
   // Tap charge id (migration 039). Null for cash/card or a capture whose id could
   // not be read. Shown on the refund card so Hassan can find the charge in the
   // Tap dashboard to process the manual refund.

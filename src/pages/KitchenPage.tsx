@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { RefreshCw, Loader2, Volume2, VolumeX, AlertTriangle } from 'lucide-react'
 import { playChime, unlockAudio, audioState } from '../lib/chime'
@@ -20,8 +20,13 @@ const STATUS_ORDER: Record<KitchenOrder['status'], number> = {
 // an online order is hidden until Tap captures payment. RLS is only a backstop;
 // this client predicate is the authority, applied to both the queries and the
 // Realtime handlers. Cash/card orders are always visible.
-function isKitchenVisible(o: { payment_method: string; payment_status: string }): boolean {
-  return o.payment_method !== 'online' || o.payment_status === 'paid'
+//
+// Test orders (migration 055) are hidden everywhere. `is_test !== true` mirrors
+// the query filter `is_test IS NOT TRUE`: a false or absent flag stays visible,
+// so only an explicit true hides. Realtime payloads carry the full row, so a
+// test order's INSERT/UPDATE is ignored here exactly as the queries exclude it.
+function isKitchenVisible(o: { payment_method: string; payment_status: string; is_test?: boolean }): boolean {
+  return o.is_test !== true && (o.payment_method !== 'online' || o.payment_status === 'paid')
 }
 
 // Backup-poll interval override, enabled in the PRODUCTION build (the board is
@@ -83,6 +88,23 @@ function bahrainTodayStart(): string {
   return new Date(`${bahrainDate}T00:00:00+03:00`).toISOString()
 }
 
+// History view bounds. With no search term the History tab loads only the last
+// HISTORY_WINDOW_DAYS (from Bahrain midnight), so a full order table never lands
+// in one shot. A search drops the date bound and looks across all history, still
+// capped at HISTORY_LIMIT rows; when a result set hits the cap the UI says so
+// rather than silently truncating.
+const HISTORY_WINDOW_DAYS = 7
+const HISTORY_LIMIT = 200
+
+// Start of the default history window: HISTORY_WINDOW_DAYS before today's Bahrain
+// midnight, as a UTC ISO string. Bahrain has no DST, so subtracting whole days
+// off the midnight boundary is exact.
+function bahrainDaysAgoStart(days: number): string {
+  const base = new Date(bahrainTodayStart())
+  base.setUTCDate(base.getUTCDate() - days)
+  return base.toISOString()
+}
+
 const COLUMNS: { key: KitchenOrder['status']; title: string; color: string }[] = [
   { key: 'placed',           title: 'New',              color: 'var(--color-accent)' },
   { key: 'preparing',        title: 'Preparing',        color: '#D97706' },
@@ -108,6 +130,15 @@ export default function KitchenPage() {
   const [activeTab, setActiveTab] = useState<'active' | 'history' | 'refunds'>('active')
   const [historyOrders, setHistoryOrders] = useState<KitchenOrder[]>([])
   const [historyFetchState, setHistoryFetchState] = useState<FetchState>('idle')
+  // History search. `historyInput` is the controlled text box; `historyQuery` is
+  // the APPLIED term (drives the empty-state copy). The ref mirrors the applied
+  // term so fetchHistory can read it without being a dependency, keeping the
+  // callback stable (the Realtime effect and others close over nothing here).
+  // Empty applied term = default recent-window view; non-empty = search all
+  // history. Applied only on submit/clear, never per keystroke.
+  const [historyInput, setHistoryInput] = useState('')
+  const [historyQuery, setHistoryQuery] = useState('')
+  const historyQueryRef = useRef('')
   const [refundOrders, setRefundOrders] = useState<KitchenOrder[]>([])
   const [refundFetchState, setRefundFetchState] = useState<FetchState>('idle')
   // Badge count for the Refund Owed tab. Populated on page load by a lightweight
@@ -208,6 +239,9 @@ export default function KitchenPage() {
       // Authoritative kitchen visibility filter (see isKitchenVisible). ANDed
       // with the status filter: hide unpaid/pending online orders from staff.
       .or('payment_method.neq.online,payment_status.eq.paid')
+      // Hide pre-launch test orders (migration 055). `is not true` matches false
+      // and null, so only an explicit is_test=true is excluded.
+      .not('is_test', 'is', true)
       .order('placed_at', { ascending: true })
 
     if (error) {
@@ -323,17 +357,45 @@ export default function KitchenPage() {
 
   const fetchHistory = useCallback(async () => {
     setHistoryFetchState('loading')
-    const todayStart = bahrainTodayStart()
+    const term = historyQueryRef.current.trim()
+    // Strip the characters that would break PostgREST's or()/ilike grammar
+    // (comma and parens are separators; % and * are wildcards). What remains is
+    // a plain substring match, which is all staff need for names and phones.
+    const esc = term.replace(/[%,()*]/g, ' ').trim()
 
-    const { data: rawOrders, error } = await supabase
+    let query = supabase
       .from('orders')
       .select('*, items:order_items(*, addons:order_item_addons(*), variants:order_item_variants(*))')
       .in('status', ['completed', 'cancelled'])
-      .gte('placed_at', todayStart)
       // Same visibility filter: an abandoned/unpaid online order that was
       // cancelled was never a real kitchen order, so keep it out of History too.
       .or('payment_method.neq.online,payment_status.eq.paid')
+      // Hide pre-launch test orders (migration 055), same as the active board.
+      .not('is_test', 'is', true)
+
+    if (esc) {
+      // Searching: no date bound, look across all history. Customer name/phone
+      // live on `profiles`, not `orders`, so resolve matching accounts to
+      // user_ids first and OR them in alongside the guest fields and the order
+      // number. This one extra query is what lets a name/phone search reach
+      // account orders, not just guest orders.
+      const { data: matchProfiles } = await supabase
+        .from('profiles').select('id')
+        .or(`full_name.ilike.%${esc}%,phone.ilike.%${esc}%`)
+        .limit(100)
+      const ids = (matchProfiles ?? []).map((p: { id: string }) => p.id)
+      const ors = [`guest_name.ilike.%${esc}%`, `guest_phone.ilike.%${esc}%`]
+      if (/^\d+$/.test(term)) ors.push(`order_number.eq.${term}`)
+      if (ids.length) ors.push(`user_id.in.(${ids.join(',')})`)
+      query = query.or(ors.join(','))
+    } else {
+      // Default view: only the recent window, so we never pull the whole table.
+      query = query.gte('placed_at', bahrainDaysAgoStart(HISTORY_WINDOW_DAYS))
+    }
+
+    const { data: rawOrders, error } = await query
       .order('placed_at', { ascending: false })
+      .limit(HISTORY_LIMIT)
 
     if (error) {
       console.error('Failed to fetch history:', error)
@@ -363,6 +425,24 @@ export default function KitchenPage() {
     setHistoryOrders(merged)
     setHistoryFetchState('idle')
   }, [])
+
+  // Apply the text box as the active search and refetch. Sets the ref (read
+  // synchronously by fetchHistory) and the state (drives the empty-state copy).
+  const submitHistorySearch = useCallback((e?: FormEvent) => {
+    e?.preventDefault()
+    const term = historyInput.trim()
+    historyQueryRef.current = term
+    setHistoryQuery(term)
+    fetchHistory()
+  }, [historyInput, fetchHistory])
+
+  // Clear the search and return to the default recent-window view.
+  const clearHistorySearch = useCallback(() => {
+    setHistoryInput('')
+    historyQueryRef.current = ''
+    setHistoryQuery('')
+    fetchHistory()
+  }, [fetchHistory])
 
   // ── Refund-owed section (ADR-046) ─────────────────────────────────────────
   // Its own query: the full ADR-046 predicate. Rows are mostly terminal
@@ -1012,61 +1092,114 @@ export default function KitchenPage() {
 
         {/* History tab content */}
         {activeTab === 'history' && (
-          historyFetchState === 'loading' ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '0.5rem', color: 'var(--color-text-muted)' }}>
-              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-              <span>Loading history…</span>
-            </div>
-          ) : historyFetchState === 'error' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem', color: 'var(--color-text-muted)' }}>
-              <p>Couldn't load history — retry</p>
-              <button
-                onClick={fetchHistory}
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            {/* Search bar — always visible so staff can look past the default
+                recent window even when the window itself is empty. */}
+            <form
+              onSubmit={submitHistorySearch}
+              style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexShrink: 0, flexWrap: 'wrap' }}
+            >
+              <input
+                type="text"
+                value={historyInput}
+                onChange={(e) => setHistoryInput(e.target.value)}
+                placeholder="Search all history — order #, name, or phone"
+                aria-label="Search order history"
                 style={{
-                  background: 'var(--color-accent)', color: '#fff',
-                  border: 'none', borderRadius: 'var(--radius-pill)',
-                  padding: '0.625rem 1.5rem', cursor: 'pointer',
-                  fontFamily: 'var(--font-sans)', fontWeight: 600,
-                  fontSize: '0.9375rem', minHeight: '44px',
+                  flex: 1, minWidth: '180px',
+                  background: 'rgba(255,255,255,0.1)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.18)', borderRadius: 'var(--radius-pill)',
+                  padding: '0.5rem 1rem', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem',
+                  minHeight: '40px',
+                }}
+              />
+              <button
+                type="submit"
+                style={{
+                  background: 'var(--color-accent)', color: '#fff', border: 'none',
+                  borderRadius: 'var(--radius-pill)', padding: '0.5rem 1.25rem', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.9375rem', minHeight: '40px',
                 }}
               >
-                Retry
+                Search
               </button>
-            </div>
-          ) : historyOrders.length === 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--color-text-muted)' }}>
-              No completed or cancelled orders today
-            </div>
-          ) : (
-            <div style={{ overflowY: 'auto', flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+              {historyQuery && (
                 <button
-                  onClick={fetchHistory}
+                  type="button"
+                  onClick={clearHistorySearch}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: '0.375rem',
-                    background: 'rgba(255,255,255,0.12)', color: '#fff',
-                    border: 'none', borderRadius: 'var(--radius-pill)',
-                    padding: '0.375rem 0.875rem', cursor: 'pointer',
-                    fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.875rem',
-                    minHeight: '36px',
+                    background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none',
+                    borderRadius: 'var(--radius-pill)', padding: '0.5rem 1rem', cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.9375rem', minHeight: '40px',
                   }}
                 >
-                  <RefreshCw size={14} /> Refresh
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => fetchHistory()}
+                aria-label="Refresh history"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.375rem',
+                  background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none',
+                  borderRadius: 'var(--radius-pill)', padding: '0.5rem 1rem', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '0.875rem', minHeight: '40px',
+                }}
+              >
+                <RefreshCw size={14} /> Refresh
+              </button>
+            </form>
+
+            {/* Content states below the (always-present) search bar. */}
+            {historyFetchState === 'loading' ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '0.5rem', color: 'var(--color-text-muted)' }}>
+                <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Loading history…</span>
+              </div>
+            ) : historyFetchState === 'error' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '1rem', color: 'var(--color-text-muted)' }}>
+                <p>Couldn't load history — retry</p>
+                <button
+                  onClick={() => fetchHistory()}
+                  style={{
+                    background: 'var(--color-accent)', color: '#fff',
+                    border: 'none', borderRadius: 'var(--radius-pill)',
+                    padding: '0.625rem 1.5rem', cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)', fontWeight: 600,
+                    fontSize: '0.9375rem', minHeight: '44px',
+                  }}
+                >
+                  Retry
                 </button>
               </div>
-              <div style={{ columns: 'auto 320px', gap: '1rem' }}>
-                {historyOrders.map(order => (
-                  <div key={order.id} style={{ breakInside: 'avoid', marginBottom: '1rem', opacity: order.status === 'cancelled' ? 0.6 : 1 }}>
-                    <OrderCard
-                      order={order}
-                      onUpdateStatus={async () => ({ ok: true })}
-                      readOnly
-                    />
-                  </div>
-                ))}
+            ) : historyOrders.length === 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, textAlign: 'center', padding: '0 1rem', color: 'var(--color-text-muted)' }}>
+                {historyQuery
+                  ? `No orders match "${historyQuery}"`
+                  : `No completed or cancelled orders in the last ${HISTORY_WINDOW_DAYS} days. Search to look further back.`}
               </div>
-            </div>
-          )
+            ) : (
+              <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+                {historyOrders.length === HISTORY_LIMIT && (
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '0 0 0.75rem' }}>
+                    Showing the first {HISTORY_LIMIT} orders. Narrow your search to see the rest.
+                  </p>
+                )}
+                <div style={{ columns: 'auto 320px', gap: '1rem' }}>
+                  {historyOrders.map(order => (
+                    <div key={order.id} style={{ breakInside: 'avoid', marginBottom: '1rem', opacity: order.status === 'cancelled' ? 0.6 : 1 }}>
+                      <OrderCard
+                        order={order}
+                        onUpdateStatus={async () => ({ ok: true })}
+                        readOnly
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Refund Owed tab content */}
