@@ -104,6 +104,13 @@ export interface KitchenOrder {
   subtotal_fils: number
   delivery_fee_fils: number
   total_fils: number
+  // Order-level discount (DEV-Gusto-App). discount_fils is the authoritative amount
+  // subtracted; discount_rate/discount_code are display labels only, never used to
+  // compute the amount. Columns arrive via the kitchen's select('*') but were
+  // previously untyped.
+  discount_fils: number
+  discount_rate: number | null
+  discount_code: string | null
   address_snapshot: AddressSnapshot | null
   // Payment fields land via DEV-Gusto-App migrations 039 (payment_status,
   // widened payment_method) and 041 (refund_owed). The kitchen visibility

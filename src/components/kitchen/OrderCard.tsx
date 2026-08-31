@@ -96,6 +96,29 @@ function nextAction(
   }
 }
 
+// Fils → BHD display, matching the card's existing total formatting (3 decimals).
+const bhd = (fils: number) => (fils / 1000).toFixed(3)
+
+// Payment tag for the card. Staff need to know at a glance whether the money is
+// already in (Prepaid) or must be collected on delivery/collection. Prepaid is
+// styled green (done); every collect case is amber (action needed). Unknown combos
+// fall back to a neutral, non-crashing "Payment: <status>".
+function paymentMeta(
+  orderType: 'delivery' | 'pickup',
+  method: string,
+  paymentStatus: string,
+): { label: string; bg: string; fg: string } {
+  if (method === 'online' && paymentStatus === 'paid') {
+    return { label: 'Prepaid', bg: 'var(--color-success)', fg: '#fff' }
+  }
+  const collect = { bg: '#D97706', fg: '#fff' }
+  if (method === 'cash' && orderType === 'delivery') return { label: 'Cash on delivery', ...collect }
+  if (method === 'card' && orderType === 'delivery') return { label: 'Card on delivery', ...collect }
+  if (method === 'cash' && orderType === 'pickup')   return { label: 'Pay cash on collection', ...collect }
+  if (method === 'card' && orderType === 'pickup')   return { label: 'Pay card on collection', ...collect }
+  return { label: `Payment: ${paymentStatus}`, bg: '#6B7280', fg: '#fff' }
+}
+
 interface OrderCardProps {
   order: KitchenOrder
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => Promise<{ ok: boolean; error?: string }>
@@ -108,7 +131,9 @@ interface OrderCardProps {
 export default function OrderCard({ order, onUpdateStatus, readOnly = false, showStatus = false }: OrderCardProps) {
   const { order_number, order_type, status, placed_at, customer,
     order_note, items, address_snapshot, total_fils, scheduled_for, cancelled_by,
-    is_guest_order, was_deleted_user, guest_name, guest_phone } = order
+    is_guest_order, was_deleted_user, guest_name, guest_phone,
+    subtotal_fils, delivery_fee_fils, discount_fils, discount_rate, discount_code,
+    payment_method, payment_status } = order
 
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -130,8 +155,15 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false, sho
       ? '(Deleted account)'
       : (customer?.full_name ?? '(Unknown)')
   const customerPhone = is_guest_order ? guest_phone : (customer?.phone ?? null)
-  const totalBhd = (total_fils / 1000).toFixed(3)
   const action = nextAction(status, order_type)
+  const pay = paymentMeta(order_type, payment_method, payment_status)
+  // Discount amount is authoritative from discount_fils; the rate/code is a label
+  // only (prefer the code, else the rate as a percent).
+  const discountLabel = discount_code
+    ? discount_code
+    : discount_rate != null
+      ? `${Math.round(discount_rate * 100)}%`
+      : null
 
   async function handleAdvance() {
     if (!action || pending) return
@@ -276,17 +308,22 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false, sho
           const isReward = item.line_note === 'REWARD'
           return (
           <div key={item.id} style={{ marginBottom: '0.375rem' }}>
-            <p style={{ fontSize: '0.9375rem', color: 'var(--color-ink)', margin: 0 }}>
-              {isReward ? (
-                <>
-                  <span style={{ color: '#FBBF24', fontWeight: 700 }}>REWARD</span>
-                  {' · '}
-                  {item.name_snapshot}
-                </>
-              ) : (
-                <>{item.quantity} × {item.name_snapshot}</>
-              )}
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+              <p style={{ fontSize: '0.9375rem', color: 'var(--color-ink)', margin: 0 }}>
+                {isReward ? (
+                  <>
+                    <span style={{ color: '#FBBF24', fontWeight: 700 }}>REWARD</span>
+                    {' · '}
+                    {item.name_snapshot}
+                  </>
+                ) : (
+                  <>{item.quantity} × {item.name_snapshot}</>
+                )}
+              </p>
+              <span style={{ fontSize: '0.9375rem', color: 'var(--color-ink)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                BHD {bhd(item.line_total_fils)}
+              </span>
+            </div>
             {item.variants
               .map(v => ({ id: v.id, label: variantDisplay(v) }))
               .filter((v): v is { id: string; label: string } => v.label !== null)
@@ -342,14 +379,42 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false, sho
         </div>
       )}
 
-      {/* Total */}
-      <p style={{
-        textAlign: 'right', fontSize: '0.875rem',
-        color: 'var(--color-text-muted)', fontWeight: 600,
-        marginTop: '0.5rem', marginBottom: 0,
-      }}>
-        BHD {totalBhd}
-      </p>
+      {/* Payment tag + reconciling money breakdown. Kept together so staff read the
+          amount and whether to collect it at once. Subtotal (= sum of line totals)
+          − discount + delivery = total, using stored values only. */}
+      <div style={{ borderTop: '1px solid rgba(104,90,90,0.08)', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+          <span style={{
+            background: pay.bg, color: pay.fg,
+            borderRadius: 'var(--radius-pill)',
+            padding: '0.2rem 0.6rem',
+            fontSize: '0.8125rem', fontWeight: 800,
+            whiteSpace: 'nowrap',
+          }}>
+            {pay.label}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0.125rem 0' }}>
+          <span>Subtotal</span>
+          <span>BHD {bhd(subtotal_fils)}</span>
+        </div>
+        {discount_fils > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0.125rem 0' }}>
+            <span>Discount{discountLabel ? ` (${discountLabel})` : ''}</span>
+            <span>-BHD {bhd(discount_fils)}</span>
+          </div>
+        )}
+        {delivery_fee_fils > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '0.125rem 0' }}>
+            <span>Delivery</span>
+            <span>+BHD {bhd(delivery_fee_fils)}</span>
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '1rem', fontWeight: 700, color: 'var(--color-ink)', marginTop: '0.375rem', paddingTop: '0.375rem', borderTop: '1px solid rgba(104,90,90,0.08)' }}>
+          <span>Total</span>
+          <span>BHD {bhd(total_fils)}</span>
+        </div>
+      </div>
 
       {/* Action row — hidden on read-only history cards */}
       {!readOnly && <div style={{
