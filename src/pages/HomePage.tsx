@@ -42,10 +42,10 @@ function Ico({
  * because the header uses in-page anchor nav (#menu, #visit) and a centered
  * wordmark footer that only make sense on this scroll page.
  *
- * Sections: Header · Hero · "A few from the oven" menu band · "Find us in
- * Janabiyah" visit block · wordmark footer. Styling is ported from the design
- * handoff into the `home-` prefixed <style> block below and driven by the warm
- * palette tokens (--color-warm-*) + Archivo / Cormorant Garamond.
+ * Sections: Header · Hero (photo + two CTAs, no copy) · "Find us in Janabiyah"
+ * visit block · wordmark footer. Styling is ported from the design handoff into
+ * the `home-` prefixed <style> block below and driven by the warm palette tokens
+ * (--color-warm-*) + Archivo / Cormorant Garamond.
  */
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -57,16 +57,10 @@ const PHONE_DISPLAY = '+973 1769 5556'
 const PHONE_TEL = '+97317695556'
 const INSTAGRAM = '@gusto_bahrain'
 const INSTAGRAM_URL = 'https://instagram.com/gusto_bahrain'
+const APP_STORE_URL = 'https://apps.apple.com/ca/app/gusto-pizzeria/id6780534228'
 const MAPS_URL =
   'https://www.google.com/maps/search/?api=1&query=Il%20Gusto%20Pizzeria%20Al%20Janabiyah%20Bahrain'
 const MAPS_EMBED = 'https://www.google.com/maps?q=Il+Gusto+Pizzeria+Al+Janabiyah+Bahrain&output=embed'
-
-const MENU_HIGHLIGHTS = [
-  { img: 'arabica.webp', name: 'Arabica', desc: 'Spiced beef salami, red onion, green chilli, fior di latte' },
-  { img: 'caprese.webp', name: 'Caprese', desc: 'Fior di latte, fresh basil, confit cherry tomato, olive oil' },
-  { img: 'primavera.webp', name: 'Primavera', desc: 'Basil pesto, grilled courgette, peppers and mushroom' },
-  { img: 'donald-duck.webp', name: 'Donald Duck', desc: "Mozzarella, beef and golden fries, the little ones' favourite" },
-]
 
 export default function HomePage() {
   return (
@@ -85,40 +79,31 @@ export default function HomePage() {
         </header>
 
         <section className="home-hero">
-          <div>
-            <div className="home-eyebrow-rule">
-              <span className="home-rule" />
-              <span className="home-eyebrow">Forno a Legna</span>
-            </div>
-            <h1 className="home-h1">
-              Wood-fired,<br />hand-stretched,<br />
-              <span className="home-h1-accent">to your table.</span>
-            </h1>
-            <p className="home-hero-sub">
-              Napoletana pizza pulled fresh, blistered in the oak-fired oven, and carried straight to
-              your table, or your door.
-            </p>
-            <div className="home-cta-row">
-              <span className="home-btn home-btn-primary" aria-disabled="true">
-                <Ico size={18} sw={2.2}>
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 7v5l3 2" />
-                </Ico>
-                App Coming Soon
-              </span>
-              <Link className="home-btn home-btn-primary" to="/menu">
-                <Ico size={17} sw={2.2}>
-                  <rect x="8" y="2" width="8" height="4" rx="1" />
-                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                  <path d="M12 11h4" />
-                  <path d="M12 16h4" />
-                  <path d="M8 11h.01" />
-                  <path d="M8 16h.01" />
-                </Ico>
-                View Menu
-              </Link>
-            </div>
-            <p className="home-micro-note">App launching soon on the App Store and Google Play</p>
+          <div className="home-hero-actions">
+            <a
+              className="home-btn home-btn-primary home-btn-lg"
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Ico size={22} sw={2.2}>
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </Ico>
+              Download App
+            </a>
+            <Link className="home-btn home-btn-outline home-btn-lg" to="/menu">
+              <Ico size={22} sw={2.2}>
+                <rect x="8" y="2" width="8" height="4" rx="1" />
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <path d="M12 11h4" />
+                <path d="M12 16h4" />
+                <path d="M8 11h.01" />
+                <path d="M8 16h.01" />
+              </Ico>
+              View Menu
+            </Link>
           </div>
           <div className="home-hero-media">
             <img
@@ -134,35 +119,6 @@ export default function HomePage() {
           </div>
         </section>
       </div>
-
-      <section className="home-menu-band" id="menu">
-        <div className="home-wrap">
-          <div className="home-section-head">
-            <div>
-              <span className="home-eyebrow">Dal Forno</span>
-              <h2 className="home-section-title">A few from the oven</h2>
-            </div>
-            <Link className="home-link-arrow" to="/menu">
-              Full menu
-              <Ico size={15} sw={2.4}>
-                <path d="M5 12h14" />
-                <path d="m13 6 6 6-6 6" />
-              </Ico>
-            </Link>
-          </div>
-          <div className="home-menu-grid">
-            {MENU_HIGHLIGHTS.map((item) => (
-              <article className="home-menu-card" key={item.name}>
-                <div className="home-thumb">
-                  <img src={img(item.img)} alt={`${item.name} pizza`} width={300} height={300} loading="lazy" decoding="async" />
-                </div>
-                <h3>{item.name}</h3>
-                <p>{item.desc}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <section className="home-visit home-wrap" id="visit">
         <div className="home-visit-grid">
@@ -267,41 +223,32 @@ export default function HomePage() {
         .home-navlink:hover { color: var(--color-warm-ink); }
         .home-locale { font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-warm-muted); border-left: 1px solid var(--color-warm-line); padding-left: 34px; }
 
-        /* Eyebrow */
+        /* Eyebrow (used by the Visit block) */
         .home-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.28em; text-transform: uppercase; color: var(--color-warm-accent); }
-        .home-eyebrow-rule { display: flex; align-items: center; gap: 12px; }
-        .home-eyebrow-rule .home-rule { width: 34px; height: 1px; background: #C0693C; }
 
         /* Hero */
         .home-hero { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; padding: 44px 0 84px; }
-        .home-h1 { font-family: var(--font-italic); font-weight: 500; font-size: 74px; line-height: 1.0; letter-spacing: -0.01em; color: var(--color-warm-ink); margin: 26px 0 24px; }
-        .home-h1-accent { font-style: italic; color: var(--color-warm-accent); }
-        .home-hero-sub { font-family: var(--font-italic); font-size: 23px; line-height: 1.5; color: var(--color-warm-body); margin: 0 0 38px; max-width: 430px; }
-        .home-cta-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-        /* All CTAs share one treatment: solid terracotta, white text, readable at rest. */
-        .home-btn { display: inline-flex; align-items: center; gap: 11px; border-radius: 100px; font-weight: 700; font-size: 15px; padding: 17px 30px; cursor: pointer; border: none; font-family: var(--font-archivo); }
+        /* Hero actions: two large stacked buttons beside the photo. */
+        .home-hero-actions { display: flex; flex-direction: column; align-items: stretch; gap: 18px; max-width: 400px; }
+        /* All CTAs share one pill treatment; size + fill vary by modifier.
+           A transparent 1.5px border keeps solid and outline buttons the same height. */
+        .home-btn { display: inline-flex; align-items: center; gap: 11px; border-radius: 100px; font-weight: 700; font-size: 15px; padding: 17px 30px; cursor: pointer; border: 1.5px solid transparent; font-family: var(--font-archivo); }
+        /* Big hero buttons: taller, centred label, uppercase for weight. */
+        .home-btn-lg { justify-content: center; padding: 24px 34px; font-size: 18px; letter-spacing: 0.06em; text-transform: uppercase; }
         /* .home .home-btn-primary (two classes) outranks the .home a colour rule
            above, so button labels and their icons stay white on the terracotta. */
         .home .home-btn-primary { background: var(--color-warm-accent); color: #FFFFFF; box-shadow: 0 10px 26px -10px rgba(178,74,36,0.7); }
         .home .home-btn-primary:hover { background: var(--color-warm-accent-deep); color: #FFFFFF; }
+        /* Outline variant for the secondary action — terracotta on transparent. */
+        .home .home-btn-outline { background: transparent; color: var(--color-warm-accent); border-color: var(--color-warm-accent); }
+        .home .home-btn-outline:hover { background: var(--color-warm-accent); color: #FFFFFF; }
         .home-btn-start { align-self: flex-start; }
         .home-btn[aria-disabled="true"] { cursor: default; }
-        .home-micro-note { font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-warm-muted); margin: 22px 0 0; }
         .home-hero-media { aspect-ratio: 4 / 5; border-radius: 20px; overflow: hidden; box-shadow: 0 34px 70px -30px rgba(58,38,20,0.55); }
         .home-hero-media img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* Menu band */
-        .home-menu-band { background: var(--color-warm-surface); border-top: 1px solid rgba(42,35,30,0.08); border-bottom: 1px solid rgba(42,35,30,0.08); }
-        .home-menu-band .home-wrap { padding: 76px 32px 84px; }
-        .home-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 52px; }
+        /* Section title (used by the Visit block) */
         .home-section-title { font-family: var(--font-italic); font-weight: 500; font-size: 46px; line-height: 1.05; color: var(--color-warm-ink); margin-top: 10px; }
-        .home-link-arrow { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-warm-accent); display: inline-flex; align-items: center; gap: 8px; }
-        .home-menu-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 34px; }
-        .home-menu-card { display: flex; flex-direction: column; align-items: center; text-align: center; }
-        .home-thumb { width: 100%; aspect-ratio: 1 / 1; border-radius: 50%; overflow: hidden; background: var(--color-warm-card-img); box-shadow: 0 20px 40px -24px rgba(58,38,20,0.55); margin-bottom: 22px; }
-        .home-thumb img { width: 100%; height: 100%; object-fit: cover; }
-        .home-menu-card h3 { font-family: var(--font-italic); font-weight: 600; font-size: 26px; color: var(--color-warm-ink); margin-bottom: 8px; }
-        .home-menu-card p { font-size: 13.5px; line-height: 1.6; color: #7A6C5E; margin: 0; max-width: 220px; }
 
         /* Visit */
         .home-visit { padding: 84px 32px 40px; }
@@ -333,23 +280,20 @@ export default function HomePage() {
         /* Responsive */
         @media (max-width: 900px) {
           .home-hero { grid-template-columns: 1fr; gap: 40px; padding: 24px 0 64px; }
-          .home-h1 { font-size: 58px; }
-          .home-hero-media { max-width: 460px; }
+          .home-hero-actions { max-width: 460px; order: 2; }
+          .home-hero-media { max-width: 460px; order: 1; }
           .home-visit-grid { grid-template-columns: 1fr; gap: 32px; }
           .home-visit-photo { min-height: 300px; }
-          .home-menu-grid { grid-template-columns: repeat(2, 1fr); gap: 40px 28px; }
         }
         @media (max-width: 760px) {
           .home-header { flex-wrap: wrap; gap: 16px; padding: 24px 0 20px; }
           .home-nav { gap: 22px; flex-wrap: wrap; }
           .home-locale { border-left: none; padding-left: 0; }
-          .home-h1 { font-size: 46px; }
           .home-section-title { font-size: 36px; }
         }
         @media (max-width: 520px) {
-          .home-menu-grid { grid-template-columns: 1fr; gap: 40px; }
-          .home-cta-row .home-btn { flex: 1 1 auto; justify-content: center; }
-          .home-h1 { font-size: 40px; }
+          .home-hero-actions { max-width: none; }
+          .home-btn-lg { padding: 20px 28px; font-size: 16px; }
         }
         @media (prefers-reduced-motion: reduce) {
           .home a, .home-btn { transition: none; }
